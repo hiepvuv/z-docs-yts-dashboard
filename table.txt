@@ -1,0 +1,632 @@
+create or replace table emr_db_top10_thuoc_sd
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_top10_thuoc_sd_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_top10_thuoc_sd_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_top10_thuoc_sd_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_top10_hoat_chat_sd
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    hoat_chat            varchar(255)                             null comment 'Hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_top10_hoat_chat_sd_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, ma_thuoc, ten_biet_duoc, hoat_chat)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_top10_hoat_chat_sd_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    hoat_chat            varchar(255)                             null comment 'Hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_top10_hoat_chat_sd_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, ma_thuoc, ten_biet_duoc, hoat_chat)
+)
+    charset = utf8
+;
+
+
+create or replace table emr_db_top10_nhom_thuoc_sd
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    nhom_thuoc           varchar(255)                             null comment 'Nhóm thuốc',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_top10_nhom_thuoc_sd_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, nhom_thuoc, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_top10_nhom_thuoc_sd_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    nhom_thuoc           varchar(255)                             null comment 'Nhóm thuốc',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_top10_nhom_thuoc_sd_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, nhom_thuoc, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_co_cau_chi_phi_sd_thuoc
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    phan_loai            int                                      null comment 'Phân loại thuốc: 1=Kháng sinh; 0=Khác',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_co_cau_chi_phi_sd_thuoc_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, phan_loai, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_co_cau_chi_phi_sd_thuoc_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    phan_loai            int                                      null comment 'Phân loại thuốc: 1=Kháng sinh; 0=Khác',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_co_cau_chi_phi_sd_thuoc_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, phan_loai, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_chi_phi_ks_theo_khoa
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    khoa                 varchar(255)                             null comment 'Khoa',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_chi_phi_ks_theo_khoa_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, khoa, ma_thuoc, ten_biet_duoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_chi_phi_ks_theo_khoa_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    khoa                 varchar(255)                             null comment 'Khoa',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_chi_phi_ks_theo_khoa_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, khoa, ma_thuoc, ten_biet_duoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_giua_noitru_ngoaitru
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    loai_dieu_tri        varchar(255)                             null comment 'Loại điều trị',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_giua_noitru_ngoaitru_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, loai_dieu_tri, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_giua_noitru_ngoaitru_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    loai_dieu_tri        varchar(255)                             null comment 'Loại điều trị',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_giua_noitru_ngoaitru_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, loai_dieu_tri, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+
+create or replace table emr_db_tien_ks_ngoaitru_thang
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    thang_su_dung        varchar(255)                             null comment 'Tháng sử dụng',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_ngoaitru_thang_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, thang_su_dung, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_ngoaitru_thang_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    thang_su_dung        varchar(255)                             null comment 'Tháng sử dụng',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_ngoaitru_thang_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, thang_su_dung, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+
+create or replace table emr_db_tien_ks_noitru_thang
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    thang_su_dung        varchar(255)                             null comment 'Tháng sử dụng',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_noitru_thang_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, thang_su_dung, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_noitru_thang_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    thang_su_dung        varchar(255)                             null comment 'Tháng sử dụng',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_thuoc            varchar(255)                             null comment 'Tên thuốc',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_noitru_thang_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, thang_su_dung, ma_thuoc, ten_thuoc)
+)
+    charset = utf8
+;
+
+
+create or replace table emr_db_tien_ks_phan_nhom_tddl
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    phan_nhom            varchar(255)                             null comment 'Phân nhóm',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    hoat_chat            varchar(255)                             null comment 'Hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_phan_nhom_tddl_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, phan_nhom, ma_thuoc, ten_biet_duoc, hoat_chat)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_phan_nhom_tddl_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    phan_nhom            varchar(255)                             null comment 'Phân nhóm',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    hoat_chat            varchar(255)                             null comment 'Hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_phan_nhom_tddl_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, phan_nhom, ma_thuoc, ten_biet_duoc, hoat_chat)
+)
+    charset = utf8
+;
+
+
+create or replace table emr_db_tien_ks_theo_hoat_chat
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_hoat_chat         varchar(50)                              null comment 'Mã hoạt chất',
+    ten_hoat_chat        varchar(255)                             null comment 'Tên hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_hoat_chat_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, ma_hoat_chat, ten_hoat_chat)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_theo_hoat_chat_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    ma_hoat_chat         varchar(50)                              null comment 'Mã hoạt chất',
+    ten_hoat_chat        varchar(255)                             null comment 'Tên hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_hoat_chat_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, ma_hoat_chat, ten_hoat_chat)
+)
+    charset = utf8
+;
+
+
+create or replace table emr_db_tien_ks_theo_xuat_xu
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    xuat_xu              varchar(255)                             null comment 'Xuất xứ',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_xuat_xu_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, xuat_xu, ma_thuoc, ten_biet_duoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_theo_xuat_xu_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    xuat_xu              varchar(255)                             null comment 'Xuất xứ',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_xuat_xu_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, xuat_xu, ma_thuoc, ten_biet_duoc)
+)
+    charset = utf8
+;
+
+
+create or replace table emr_db_tien_ks_theo_duong_dung
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    duong_dung           varchar(255)                             null comment 'Đường dùng',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_duong_dung_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, duong_dung, ma_thuoc, ten_biet_duoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_theo_duong_dung_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    duong_dung           varchar(255)                             null comment 'Đường dùng',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_duong_dung_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, duong_dung, ma_thuoc, ten_biet_duoc)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_theo_khoa_phan_nhom_tddl
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    khoa                 varchar(255)                             null comment 'Khoa',
+    phan_nhom            varchar(255)                             null comment 'Phân nhóm',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    hoat_chat            varchar(255)                             null comment 'Hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_khoa_phan_nhom_tddl_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, khoa, phan_nhom, ma_thuoc, ten_biet_duoc, hoat_chat)
+)
+    charset = utf8
+;
+
+create or replace table emr_db_tien_ks_theo_khoa_phan_nhom_tddl_stg
+(
+    id                   bigint auto_increment primary key,
+    ngay_tong_hop        int                                      null comment 'Ngày tổng hợp dạng số',
+    ngay_tong_hop_goc    date                                     null comment 'Ngày tổng hợp',
+    ngay                 varchar(50)                              null,
+    thang                varchar(10)                              null,
+    nam                  varchar(10)                              null,
+    khoa                 varchar(255)                             null comment 'Khoa',
+    phan_nhom            varchar(255)                             null comment 'Phân nhóm',
+    ma_thuoc             varchar(50)                              null comment 'Mã thuốc',
+    ten_biet_duoc        varchar(255)                             null comment 'Tên biệt dược',
+    hoat_chat            varchar(255)                             null comment 'Hoạt chất',
+    ngay_su_dung         date                                     null comment 'Ngày sử dụng',
+    cskcb                varchar(255)                             null comment 'CS KCB',
+    so_luong             decimal(10, 2)                           null comment 'Số lượng',
+    tong_tien            decimal(20, 3)                           null comment 'Tổng tiền',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    constraint emr_db_tien_ks_theo_khoa_phan_nhom_tddl_uindex
+        unique (ngay_tong_hop, cskcb, ngay_su_dung, khoa, phan_nhom, ma_thuoc, ten_biet_duoc, hoat_chat)
+)
+    charset = utf8
+;

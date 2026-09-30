@@ -1,0 +1,137 @@
+Mapping UI thiết kế ↔ CSDL và luồng lưu
+FE: cdc-web .../designer/dynamic-report-designer.component.ts  save() / loadForEdit()
+HTTP: dynamic-report.service.ts  saveConfig POST /configs | updateConfig PUT /configs/{id}
+BE: DynamicReportConfigController → DynamicReportConfigService.saveConfig
+    → ReportConfigConverter.applyDtoToEntity + DmReportColumnSyncService.syncColumns
+Base: {api_dynamicreport}/api/v1/dynamicreport  (dev: http://localhost:9001/api/v1/dynamicreport)
+
+Nguyên tắc
+  UI designer có hai nơi lưu:
+  A. report_config — 1 dòng / biểu mẫu; phần lớn field UI nằm trong config_json.
+  B. dm_report_columns — subset cột số liệu, phục vụ máy nhập/tổng hợp.
+  report_vertical_extend, report_period, data_report_dynamic_values không được ghi ở lần Lưu này.
+  Khi mở sửa, cột / header / hàng dọc / mô tả lấy từ config_json (GET /configs/{id}), không đọc dm_report_columns.
+
+================================================================
+Luồng lưu
+1. FE kiểm tra form (tên, mã, từng cột name/field/type).
+2. Mỗi tầng header: tổng colspan = số cột. Không thì dừng, không gọi API.
+3. Tối đa 1 cột type=vertical_column. Nếu có thì verticalRows.length >= 1.
+4. Cột inputType=query: query phải là SELECT và không chứa từ khóa cấm (validateQuery).
+5. Dựng DynamicReportConfig (cố định, không có control UI):
+     storageType = "columnar"
+     status      = "active"
+     reportType  KHÔNG gửi
+6. Không có :id → POST /configs. Có editId → PUT /configs/{editId}. Body là config.
+7. BE validateSave: không phải word thì columns không được rỗng.
+8. BE resolveReportType (vì FE không gửi reportType):
+     có verticalRows không rỗng        → vertical_matrix
+     hoặc có cột type=vertical_column  → vertical_matrix
+     còn lại                           → flat_grid
+9. Tìm report_config theo report_code (không theo id trên URL).
+   Chưa có → insert. Đã có cùng report_code → update dòng đó.
+   dto.id từ PUT được set nhưng applyDtoToEntity không dùng id để tìm bản ghi.
+   Đổi mã khi sửa → findByReportCode trượt → INSERT dòng mới; dòng cũ giữ nguyên.
+10. Ghi report_config:
+      report_code, report_name, report_type (bước 8),
+      storage_type = columnar,
+      is_active = true vì status "active",
+      config_json = JSON mục dưới,
+      create_date / update_date do Hibernate.
+11. Nếu không phải word_narrative: sync dm_report_columns.
+    Cột type=vertical_column bị loại khỏi sync.
+    Cột còn lại: tìm (report_code, column_code=field). Có thì update, không thì insert.
+    column_code không còn trong payload → is_active=false (không DELETE).
+    Không còn cột sync được → deactivate hết cột của report_code.
+12. Response POST: { success, config } sau getByReportCode. PUT: DTO getById.
+    FE báo thành công rồi navigate /bao-cao-dong sau 1,2s.
+
+Xóa trên list (không phải designer): DELETE /configs/{id} → report_config.is_active=false.
+Không tắt dm_report_columns trong nhánh delete này.
+
+================================================================
+Bảng map — Thông tin báo cáo → report_config
+
+UI                         Cột bảng              Trong config_json
+Tên báo cáo reportName     report_name           reportName
+Mã báo cáo reportCode      report_code           reportCode
+Mô tả description          —                     description
+(không có ô)               report_type           reportType   BE suy ra, xem bước 8
+(không có ô)               storage_type=columnar —            FE gửi storageType nhưng converter ghi hằng columnar
+(không có ô, FE gửi active) is_active             status      active → true; khác active → false
+(không có ô)               id                    —            IDENTITY
+(không có ô)               create_date           —            chỉ lần insert
+(không có ô)               update_date           —            mỗi lần save
+(không gửi)                —                     sourceTable  null với designer hiện tại
+
+================================================================
+Bảng map — Cột dữ liệu
+UI control                 config_json.columns[]     dm_report_columns (cột không phải vertical_column)
+name                       name                      column_name
+field                      field                     column_code
+type                       type                      data_type theo bảng dưới; cột vertical_column không có dòng DM
+width                      width                     không lưu
+source (chuỗi phẩy)        source: string[]          không lưu
+                           chỉ khi type=dropdown,    (dropdown → data_type TEXT, mất danh sách chọn ở bảng DM)
+                           trim từng mục
+required                   required                  không lưu
+inputType manual|query     inputType                 input_type MANUAL | QUERY
+queryConfig                queryConfig               query_config
+                           chỉ gửi khi inputType=query và có nội dung
+(thứ tự FormArray)         thứ tự phần tử mảng       sort_order = index+1 trong danh sách đã bỏ vertical_column
+(không có ô)               —                         parent_column_code = null (ghi đè cả khi update)
+(không có ô)               —                         formula_expression = null (ghi đè cả khi update)
+(không có ô)               —                         is_active=true với cột còn trong payload
+(không có ô)               —                         is_vertical_pivot = true cho mọi cột DM
+                                                     nếu payload có ít nhất 1 vertical_column; không thì false
+(không có ô)               —                         column_id IDENTITY, created_at, updated_at
+
+type UI → data_type
+  text             TEXT
+  numeric          NUMBER
+  calendar         DATE
+  dropdown         TEXT
+  checkbox         CHECKBOX
+  vertical_column  không tạo dòng DM
+  (thiếu type)     NUMBER
+
+================================================================
+Bảng map — Header gộp
+Chỉ config_json.nestedHeaders. Không có bảng riêng. Không ghi dm_report_columns.parent_column_code.
+
+UI                         JSON
+id tầng (row_<time>)       nestedHeaders[].id
+Tên nhóm                   cells[].title
+Colspan                    cells[].colspan
+Rowspan                    cells[].rowspan
+Căn lề                     cells[].align
+In đậm                     cells[].bold
+Mảng rỗng                  field nestedHeaders bỏ qua (undefined), BE ghi null
+
+Preview auto-rowspan (title rỗng + colspan 1) chỉ đổi HTML xem trước, không đổi JSON lúc lưu
+(vẫn lưu title/colspan/rowspan user nhập).
+
+================================================================
+Bảng map — Hàng trục dọc (modal)
+Chỉ config_json.verticalRows khi mảng không rỗng. Không ghi report_vertical_extend.
+
+UI                         JSON verticalRows[]          report_vertical_extend (API khác, designer không gọi)
+id vr_<timestamp>          id (string)                  id Integer — khác kiểu, không phải id UI
+Mã dòng                    rowCode                      row_code
+Tên dòng                   rowName                      row_name
+Thuộc nhóm cha             parentId (string id UI)     parent_id Integer
+Điều kiện SQL              conditionExpression          condition_expression
+Thứ tự                     orderIndex                   order_index
+Cấp độ                     level                        level
+In đậm                     bold                         bold
+—                          —                            report_code, create_date, update_date
+
+Có vertical_column hoặc verticalRows → report_type vertical_matrix (bước 8).
+Đọc lại: nếu JSON đã có verticalRows thì dùng JSON, không đè bằng bảng extend.
+
+================================================================
+Việc không lưu
+  Preview bảng, số thứ tự cột trên preview, badge colspan.
+  Nút Quản lý hàng / Xong / Hủy trong modal — chỉ đổi bộ nhớ đến khi Lưu cấu hình.
+  width, required, source dropdown, nested header, description: chỉ JSON.
+  Cột vertical_column: chỉ JSON (name, field, type, width, …), không có dòng dm_report_columns.

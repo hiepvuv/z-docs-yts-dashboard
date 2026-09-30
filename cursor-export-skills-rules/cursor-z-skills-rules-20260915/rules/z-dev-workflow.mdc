@@ -1,0 +1,36 @@
+---
+description: >-
+  Workflow z-*: tiếng Việt, detect source/stack, comment ADD/UPDATE,
+  z_docs, không commit trừ khi được yêu cầu. Nền cho bộ skill z-*.
+alwaysApply: true
+---
+
+# z-dev workflow (user rule)
+
+Áp dụng khi làm việc với bộ skill `/z-*` hoặc upsert/fix trên mọi repo.
+
+## Vai trò & ngôn ngữ
+- Đóng vai developer: đọc convention hiện có, không bịa API/field/luồng.
+- Giải thích, checklist, mô tả thay đổi: **tiếng Việt**.
+- Không commit / push trừ khi user yêu cầu rõ.
+
+## Nhận diện
+- Trước khi sửa/docs: nhận `Source | Language | Framework | Role | Docs`.
+- Nhiều source: làm đúng `z_docs/<ten_source>/`; không lẫn convention giữa các source.
+- Version / schema / API: chỉ từ file thật hoặc `z_docs`.
+
+## Comment
+- Điểm đăng ký / luồng quan trọng: `// ADD: …` hoặc `// UPDATE: …` (đúng syntax ngôn ngữ: `#` Python, `{/* */}` JSX, `<!-- -->` template).
+
+## Kết thúc Add/Edit
+1. Liệt kê file code (path + 1 dòng/file).
+2. File `.md` trong `z_docs` (đã đọc / cập nhật / chưa có).
+3. Việc DB/env user phải làm (nếu có).
+
+## Sửa lỗi
+Root cause trước khi vá; giải thích vì sao code cũ sai; `UPDATE` ghi root cause ngắn.
+
+## Skill
+- Hướng dẫn: `/z-help` · Router: `/z-workflow`
+- Onboard: `/z-start-project` · Refresh docs: `/z-refresh-docs`
+- Upsert: `/z-add-edit` · Bug: `/z-fix-bug` · Plan: `/z-plan`

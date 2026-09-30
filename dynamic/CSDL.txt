@@ -1,0 +1,153 @@
+CSDL báo cáo động
+Nguồn: dynamicreportbe (Java 21, Spring Boot 3.5.14, JPA, MariaDB JDBC).
+DB: cdc_datawarehouse (spring.datasource.url trong application.properties).
+ddl-auto=none — Hibernate không tạo/sửa bảng. Không có file migration SQL trong repo.
+Cột dưới đây lấy từ @Entity và câu SQL native. Kiểu/độ dài/null theo annotation; cột chỉ thấy trong SQL thì ghi "thấy trong SQL".
+
+Phạm vi màn thiết kế (cdc-web designer) khi bấm Lưu:
+  GHI: report_config, dm_report_columns
+  KHÔNG GHI: report_vertical_extend, report_period, data_report_dynamic_values
+
+================================================================
+1. report_config
+Entity: repositories/tables/entities/dynamicreport/ReportConfigEntity.java
+Một dòng = một biểu mẫu. report_code unique.
+
+Cột
+  id              Integer   PK, IDENTITY
+  report_code     String    NOT NULL, UNIQUE, length 100
+  report_name     String    NOT NULL, length 500
+  report_type     String    NOT NULL, length 50, default entity "flat_grid"
+                            Giá trị code: flat_grid | vertical_matrix | word_narrative
+  config_json     String    NOT NULL, LONGTEXT
+                            Bản JSON đầy đủ designer (xem mục 6)
+  is_active       Boolean   NOT NULL, default true
+                            Xóa list = set false (xóa mềm), không DELETE dòng
+  storage_type    String    NOT NULL, length 20, default "columnar"
+                            Designer luôn ghi "columnar"
+  create_date     Timestamp CreationTimestamp, không update
+  update_date     Timestamp UpdateTimestamp
+
+================================================================
+2. dm_report_columns
+Entity: DmReportColumnEntity.java
+Một dòng = một cột dữ liệu (không gồm cột type vertical_column).
+Khóa nghiệp vụ code dùng: (report_code, column_code). Unique index vật lý không khai báo trong entity.
+
+Cột
+  column_id            Long      PK, IDENTITY, tên cột DB column_id
+  report_code          String    NOT NULL, length 50
+  column_code          String    NOT NULL, length 50   ← field trên UI
+  column_name          String    NOT NULL, TEXT        ← tên cột trên UI
+  parent_column_code   String    nullable, length 50
+                                 Designer hiện không gửi field này → lưu null
+  sort_order           Integer   NOT NULL, default 0
+                                 Khi sync: vị trí trong danh sách cột sync (bắt đầu 1)
+  data_type            String    NOT NULL, length 20, default "NUMBER"
+                                 TEXT | NUMBER | DATE | CHECKBOX | FORMULA (FORMULA có trong map đọc, designer không gửi)
+  formula_expression   String    TEXT, nullable
+                                 Designer không có ô này → null
+  is_vertical_pivot    Boolean   NOT NULL, default false
+                                 true cho MỌI cột sync nếu payload có 1 cột vertical_column
+  input_type           String    NOT NULL, length 20, default "MANUAL"
+                                 MANUAL | QUERY
+  query_config         String    TEXT, nullable. SQL khi input_type=QUERY
+  is_active            Boolean   NOT NULL, default true
+                                 Cột biến mất khỏi payload → set false, không xóa dòng
+  created_at           Timestamp CreationTimestamp
+  updated_at           Timestamp UpdateTimestamp
+
+Lệch độ dài: report_config.report_code tối đa 100, dm_report_columns.report_code tối đa 50.
+FE chỉ cho mã 3–50 ký tự.
+
+================================================================
+3. report_vertical_extend
+Entity: ReportVerticalExtendEntity.java
+Danh mục hàng trục dọc (API riêng /report-vertical-extends và /vertical-rows/{reportCode}).
+Luồng Lưu của designer KHÔNG insert/update bảng này.
+Hàng dọc designer nằm trong report_config.config_json → verticalRows.
+BE chỉ đọc bảng này khi report_type=vertical_matrix VÀ config_json.verticalRows rỗng
+(DynamicReportConfigService.enrichVerticalRows).
+
+Cột
+  id                     Integer   PK, IDENTITY
+  report_code            String    NOT NULL, length 100
+  row_code               String    NOT NULL, length 100
+  row_name               String    NOT NULL, length 500
+  parent_id              Integer   nullable — id số của dòng cha trong CÙNG bảng
+  condition_expression   String    TEXT, nullable
+  order_index            Integer   NOT NULL, default 0
+  level                  Integer   NOT NULL, default 0
+  bold                   Boolean   NOT NULL, default false
+  create_date            Timestamp
+  update_date            Timestamp
+
+parent_id ở đây là Integer. id hàng trên UI designer là chuỗi (vr_<timestamp>), chỉ nằm trong JSON.
+
+================================================================
+4. report_period
+Entity: ReportPeriodEntity.java
+Kỳ nhập liệu. Designer không ghi bảng này.
+
+Cột
+  id                   Integer   PK, IDENTITY
+  report_code          String    NOT NULL, length 100
+  period_type          String    NOT NULL, length 20
+  period_value         Integer   NOT NULL
+  year                 Integer   NOT NULL
+  period_label         String    NOT NULL, length 200
+  start_date           Date      NOT NULL
+  end_date             Date      NOT NULL
+  input_org_level      Integer   NOT NULL, default 2
+  approval_org_level   Integer   NOT NULL, default 1
+  is_locked            Boolean   NOT NULL, default false
+  create_date          Timestamp
+  update_date          Timestamp
+
+================================================================
+5. data_report_dynamic_values
+Không có @Entity. Cột thấy trong DataReportDynamicValuesRepository (INSERT/SELECT/UPDATE).
+Bảng số liệu ô (columnar). Designer không ghi. Có ON DUPLICATE KEY UPDATE
+→ DB có unique key, nhưng danh sách cột của key không khai báo trong Java.
+
+Cột thấy trong SQL
+  report_code
+  period_id
+  org_code
+  row_index
+  column_code
+  vertical_item_code     'MAIN' cho lưới phẳng; mã danh mục khi ma trận dọc
+  value_number
+  value_text
+  approval_status
+  organization_level
+  updated_at             gán CURRENT_TIMESTAMP() khi update
+
+================================================================
+6. Cấu trúc report_config.config_json (báo cáo không phải word)
+ReportConfigConverter.buildFullConfigJsonMap — pretty JSON.
+
+  reportName
+  reportCode
+  reportType          flat_grid hoặc vertical_matrix (BE suy ra, xem mapping.txt)
+  description
+  sourceTable         designer không gửi (null). Modal chọn bảng có trong .ts, không có trong HTML
+  status              designer gửi "active"
+  columns[]           toàn bộ cột UI, kể cả vertical_column
+  nestedHeaders[]     có thể null
+  verticalRows[]      có thể null
+
+Mỗi phần tử columns[] (DynamicColumnDTO), field designer gửi:
+  name, field, type, width, required, inputType, queryConfig?, source? (string[])
+BE có thêm nhưng designer không gửi: columnCode, columnName, dataType,
+parentColumnCode, sortOrder, isVerticalPivot, formulaExpression.
+
+Mỗi nestedHeaders[]:
+  id
+  cells[]: title, colspan, rowspan, align, bold
+
+Mỗi verticalRows[]:
+  id, rowCode, rowName, parentId (string), conditionExpression, orderIndex, level, bold
+
+word_narrative: config_json là map configJson của payload, không theo khung trên.
+Designer bảng không đi nhánh này.

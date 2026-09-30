@@ -1,0 +1,190 @@
+﻿.ax_default {
+  font-family:'Arial', sans-serif;
+  font-weight:400;
+  font-style:normal;
+  font-size:13px;
+  letter-spacing:normal;
+  color:#333333;
+  vertical-align:none;
+  text-align:center;
+  line-height:normal;
+  text-transform:none;
+}
+.heading_1 {
+  font-family:'Arial', sans-serif;
+  font-weight:bold;
+  font-style:normal;
+  font-size:32px;
+  text-align:left;
+}
+.heading_2 {
+  font-family:'Arial', sans-serif;
+  font-weight:bold;
+  font-style:normal;
+  font-size:24px;
+  text-align:left;
+}
+.heading_3 {
+  font-family:'Arial', sans-serif;
+  font-weight:bold;
+  font-style:normal;
+  font-size:18px;
+  text-align:left;
+}
+.heading_4 {
+  font-family:'Arial', sans-serif;
+  font-weight:bold;
+  font-style:normal;
+  font-size:14px;
+  text-align:left;
+}
+.heading_5 {
+  font-family:'Arial', sans-serif;
+  font-weight:bold;
+  font-style:normal;
+  text-align:left;
+}
+.heading_6 {
+  font-family:'Arial', sans-serif;
+  font-weight:bold;
+  font-style:normal;
+  font-size:10px;
+  text-align:left;
+}
+.paragraph {
+  text-align:left;
+}
+.form_hint {
+  color:#999999;
+}
+.form_disabled {
+}
+.connector {
+}
+.box_1 {
+}
+.line {
+}
+.label {
+  font-size:14px;
+  text-align:left;
+}
+.image {
+}
+.shape {
+  font-family:'Arial', sans-serif;
+  font-weight:400;
+  font-style:normal;
+  font-size:13px;
+  color:#333333;
+  text-align:center;
+  line-height:normal;
+}
+.text_field {
+  color:#000000;
+  text-align:left;
+}
+.shape1 {
+}
+.text_field1 {
+  color:#000000;
+  text-align:left;
+}
+.text_area {
+  color:#000000;
+  text-align:left;
+}
+.table {
+}
+.table_cell {
+}
+.icon {
+}
+.line1 {
+}
+.image1 {
+  color:#000000;
+}
+.box_11 {
+}
+.ellipse {
+}
+.line2 {
+}
+.flow_shape {
+}
+.marker {
+  color:#FFFFFF;
+}
+.radio_button {
+  text-align:left;
+}
+.tree_node {
+  text-align:left;
+}
+.primary_button {
+  color:#FFFFFF;
+}
+.button {
+}
+.droplist {
+  color:#000000;
+  text-align:left;
+}
+.shape2 {
+  font-family:'Arial', sans-serif;
+  font-weight:400;
+  font-style:normal;
+  font-size:13px;
+  color:#333333;
+  text-align:center;
+  line-height:normal;
+}
+.droplist1 {
+  color:#000000;
+  text-align:left;
+}
+.ellipse1 {
+}
+.checkbox {
+  text-align:left;
+}
+.box_12 {
+}
+.flow_shape1 {
+}
+.box_2 {
+}
+.box_21 {
+}
+.box_3 {
+}
+.paragraph1 {
+  font-family:'Roboto', sans-serif;
+  font-weight:400;
+  font-style:normal;
+  text-align:left;
+}
+.materialicons {
+  font-family:'Material Icons ', 'Material Icons', sans-serif;
+  font-weight:400;
+  font-style:normal;
+  font-size:24px;
+  color:#000000;
+}
+.box_13 {
+  font-family:'Roboto', sans-serif;
+  font-weight:400;
+  font-style:normal;
+  font-size:14px;
+}
+.heading_21 {
+  font-family:'Roboto', sans-serif;
+  font-weight:bold;
+  font-style:normal;
+  font-size:24px;
+  text-align:left;
+}
+.horizontal_line {
+}
+textarea, select, input, button { outline: none; }

@@ -1,0 +1,96 @@
+UI thiết kế báo cáo động
+Màn: cdc-web
+  pages/bao-cao-dieu-hanh/dynamic-report/designer/dynamic-report-designer.component.html
+  + dynamic-report-designer.component.ts
+Route: /bao-cao-dong/thiet-ke (tạo) và /bao-cao-dong/thiet-ke/:id (sửa)
+Component: app-dynamic-report-designer (standalone, OnPush)
+Form: ReactiveFormsModule + ngModel cho header gộp và modal hàng dọc.
+Kéo cột: Angular CDK DragDrop.
+
+emr_web không có thư mục designer trong workspace này. Mô tả dưới đây là màn cdc-web.
+
+Các khối trên trang (thứ tự từ trên xuống)
+----------------------------------------------------------------
+
+1. Thanh tiêu đề
+   Tiêu đề: "Thiết kế Báo cáo Động" hoặc "Chỉnh sửa Báo cáo Động" (khi có :id).
+   Nút Quay lại → /bao-cao-dong
+   Nút Lưu cấu hình biểu mẫu → save(); disable khi đang lưu.
+   HeaderActionService gắn cùng hai nút lên header app.
+
+2. Thông tin báo cáo (form)
+   Tên báo cáo *     formControl reportName
+                     Bắt buộc, tối thiểu 3 ký tự.
+   Mã báo cáo *      formControl reportCode
+                     Pattern ^[a-z][a-z0-9_]{2,49}$ (chữ thường, số, _, bắt đầu bằng chữ, 3–50).
+                     Hint: mã định danh duy nhất.
+   Mô tả             formControl description, không bắt buộc.
+
+   Không có ô chọn loại báo cáo, storage, trạng thái trên UI.
+   Tạo mới không có :id thì form trống + 3 cột mẫu:
+     Tên đơn vị / ten_don_vi / text
+     Số liệu / so_lieu / numeric
+     Ngày báo cáo / ngay_bao_cao / calendar
+
+3. Header gộp (tùy chọn) — state nestedHeaderRows, không nằm trong FormGroup
+   Nút Thêm tầng Header, Thu gọn / Mở rộng.
+   Mỗi tầng:
+     Nhãn "Tầng n"
+     Badge tổng colspan so với số cột (hợp lệ khi bằng số cột)
+     Nút Thêm ô, Xóa tầng
+   Mỗi ô:
+     Tên nhóm          cell.title
+     Colspan           number, min 1, max = số cột
+     Rowspan           number, min 1, max 4
+     Căn lề            center | left | right (Giữa / Trái / Phải)
+     In đậm            checkbox
+     Chip xem trước: title rỗng và colspan=1 thì hiện "Auto-rowspan: tên cột thực"
+   Mặc định khi thêm tầng: 1 ô title "Nhóm cột mới", colspan = số cột, align center, bold true, id row_<timestamp>.
+   Ô mới: title rỗng, colspan 1, align center, bold false.
+
+4. Thiết kế cột dữ liệu — FormArray columns
+   Nút Thêm cột. Kéo grip để đổi thứ tự. Nút lên/xuống. Nút chèn giữa các dòng và chèn cuối. Nút xóa.
+   Cột lưới:
+     Tên cột *           name, bắt buộc. blur nếu field trống thì tự sinh field
+                         (bỏ dấu, thường, khoảng trắng → _, cắt 50 ký tự)
+     Tên field (DB) *    field, pattern ^[a-z][a-z0-9_]{0,49}$
+     Kiểu dữ liệu        type:
+                           text            Văn bản
+                           numeric         Số
+                           calendar        Ngày tháng
+                           dropdown        Danh sách
+                           checkbox        Boolean
+                           vertical_column Cột trục dọc — chỉ được 1 cột; option khác bị disable khi đã có
+     Độ rộng             width, number, UI min 60 max 400 step 10, mặc định 120
+     Giá trị (Dropdown)  source, chuỗi phân cách dấu phẩy; chỉ sửa khi type=dropdown
+     Loại nhập liệu      inputType: manual | query
+                         Badge: "Người dùng nhập" hoặc "Tự động từ DB"
+     Bắt buộc            required, checkbox, mặc định false
+     Thứ tự              nút lên/xuống (không phải ô nhập số)
+   Nếu inputType=query: textarea SQL queryConfig.
+     FE chặn nếu không bắt đầu SELECT hoặc chứa ; DROP DELETE UPDATE TRUNCATE INSERT ALTER CREATE EXEC.
+   Nếu type=vertical_column: panel "Cấu hình danh mục hàng"
+     Đếm số hàng, nút Quản lý hàng, preview tên + mã + in đậm theo level.
+
+5. Xem trước bảng nhập liệu
+   HTML table, không jspreadsheet (initSpreadsheet để trống).
+   Hàng index cột, thead rowspan/colspan, vài dòng body trống.
+   Dòng chữ: dữ liệu mẫu, không được lưu. Nút Làm mới chỉ build lại preview.
+
+6. Modal Quản lý danh mục hàng (khi verticalEditorColIndex >= 0)
+   Form thêm/sửa (state editingVerticalRow, chưa ghi DB cho đến khi Lưu cả biểu mẫu):
+     Tên dòng *                 rowName
+     Mã dòng *                  rowCode
+     Cấp độ                     level: 0 nhóm gốc, 1 mục con, 2 mục cháu
+     Thuộc nhóm cha             parentId: trống hoặc id hàng level 0 hoặc 1
+     Điều kiện tổng hợp SQL     conditionExpression
+     In đậm                     bold
+     Nút Hủy / Thêm hàng hoặc Cập nhật  → chỉ sửa mảng verticalRows trên client
+   Bảng danh sách: #, tên, mã, cấp, điều kiện SQL, lên/xuống/sửa/xóa.
+   Xóa hàng cũng xóa hàng con có parentId trùng id.
+   id hàng mới: vr_<timestamp>. orderIndex = vị trí (1-based) sau khi đổi thứ tự.
+   Nút Xong chỉ đóng modal.
+
+Không có trên HTML hiện tại
+  openTableModal / showTableModal / import schema bảng nguồn: method còn trong .ts, template không gắn nút.
+  sourceTable chỉ được gán khi import schema; Lưu không đưa sourceTable vào payload.
