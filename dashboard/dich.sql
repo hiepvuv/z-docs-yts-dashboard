@@ -174,12 +174,12 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_kham
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
     so_ho_so             bigint                                   null comment 'Số hồ sơ có examination_date thuộc ngày',
     so_ho_so_bh          bigint                                   null comment 'Số hồ sơ is_health_insurance = 1',
-    so_ho_so_khong_bh    bigint                                   null comment 'Số hồ sơ is_health_insurance = 0',
+    so_ho_so_khong_bh    bigint                                   null comment 'Số hồ sơ IFNULL(is_health_insurance, 0) khác 1',
     so_cap_cuu           bigint                                   null comment 'Số hồ sơ reason_code = 2',
     so_tu_vong           bigint                                   null comment 'Số hồ sơ treatment_result_id thuộc 5 hoặc 8',
     so_noi_tru           bigint                                   null comment 'Số hồ sơ type_of_examination thuộc 3, 4, 9. CN_266 gọi là lượt vào',
     so_ngoai_tru         bigint                                   null comment 'Số hồ sơ type_of_examination thuộc 2, 5, 6, 7, 8, 96, 97, 98',
-    so_tai_nan           bigint                                   null comment 'Số hồ sơ có cats_accidents.accident_type = 1',
+    so_tai_nan           bigint                                   null comment 'Tổng hồ sơ accident_type = 1, không tách tên. CN_270 đọc emr_db_tong_hop_tai_nan',
     so_ngay_dieu_tri     decimal(14, 2)                           null comment 'Tổng treatment_day_number của hồ sơ nội trú 3, 4, 9 trong ngày. Đọc bằng SUM',
     tien_benh_nhan       decimal(20, 3)                           null comment 'Tổng patient_money + patient_pay_together_money',
     tien_bao_hiem        decimal(20, 3)                           null comment 'Tổng insurance_money',
@@ -194,6 +194,50 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_kham
 ;
 
 CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_kham_stg LIKE emr_db_tong_hop_luot_kham;
+
+-- UPDATE: bảng đã tạo thì CREATE IF NOT EXISTS không sửa comment cột không BHYT
+ALTER TABLE emr_db_tong_hop_luot_kham
+    MODIFY so_ho_so_khong_bh bigint null comment 'Số hồ sơ IFNULL(is_health_insurance, 0) khác 1';
+
+-- =============================================================================
+-- Tai nạn theo tên — CN_270
+-- Grain: cơ sở + ngày vào + tên tai nạn. Không gộp vào emr_db_tong_hop_luot_kham
+-- vì một ngày nhiều tên sẽ nhân so_ho_so, tiền và số ngày.
+-- Khóa xóa vẫn (ma_csyt, ngay_vao), dùng chung emr_db_changed_record_pair.
+-- =============================================================================
+CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tai_nan
+(
+    id                   bigint auto_increment primary key,
+    ngay_vao             date                                     null comment 'DATE(examination_date). Khóa xóa cùng ma_csyt',
+    ten_tai_nan          varchar(255)                             null comment 'Tên nguyên nhân tai nạn, cats_accidents.name_vi, accident_type = 1',
+    thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
+    ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
+    ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
+    ma_xa                varchar(50)                              null comment 'Mã xã/phường của cơ sở y tế',
+    ten_xa               varchar(255)                             null comment 'Tên xã/phường',
+    ma_csyt              varchar(50)                              null comment 'Mã cơ sở khám chữa bệnh, medical_records.healthfacilities_id',
+    ten_csyt             varchar(255)                             null comment 'Tên cơ sở khám chữa bệnh',
+    tuyen_csyt           varchar(10)                              null comment 'Tuyến của cơ sở khám chữa bệnh',
+    hang_csyt            varchar(10)                              null comment 'Hạng của cơ sở khám chữa bệnh',
+    ma_chi_tieu_bieu_do  varchar(50)                              null comment 'Mã chỉ tiêu biểu đồ, dùng để lọc đúng nhóm số liệu',
+    ma_chi_tieu_canh_bao varchar(50)                              null comment 'Mã chỉ tiêu cảnh báo, để trống vì màn này không có ngưỡng cảnh báo',
+    ten_chi_tieu         varchar(255)                             null comment 'Tên chỉ tiêu bằng tiếng Việt',
+    ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
+    thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
+    nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
+    so_luot              bigint                                   null comment 'Số hồ sơ của tên tai nạn trong ngày',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    index idx_tn_csyt_ngay (ma_csyt(32), ngay_vao),
+    index idx_tn_ten (ma_csyt(32), ngay_vao, ten_tai_nan(64)),
+    index idx_tn_db (ma_tinh(16), ma_csyt(32), thoi_gian, ma_chi_tieu_bieu_do(24))
+)
+    charset = utf8mb3
+    comment = 'Dashboard CN_270. Nguồn: medical_records, cats_accidents. Một ngày nhiều tên tai nạn thì mỗi tên một dòng.'
+;
+
+CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tai_nan_stg LIKE emr_db_tong_hop_tai_nan;
 
 -- =============================================================================
 -- 2) Lượt ra — CN_266

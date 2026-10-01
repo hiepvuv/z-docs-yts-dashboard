@@ -8,13 +8,16 @@ Các màn còn lại không dùng fact bệnh: ngày là `examination_date` ho�
 
 | Fact | Màn | Grain |
 |---|---|---|
-| `emr_db_tong_hop_luot_kham` | CN_264–CN_270, CN_278, CN_280–CN_283, CN_285, CN_286 | cơ sở + ngày vào |
+| `emr_db_tong_hop_luot_kham` | CN_264–CN_269, CN_278, CN_280–CN_283, CN_285, CN_286 | cơ sở + ngày vào |
 | `emr_db_tong_hop_luot_ra` | CN_266 (lượt ra) | cơ sở + ngày ra |
+| `emr_db_tong_hop_tai_nan` | CN_270 | cơ sở + ngày vào + tên tai nạn |
 | `emr_db_tong_hop_nhom_dich_vu` | CN_284 | cơ sở + ngày y lệnh + nhóm chi phí + mã hồ sơ |
 
 `ngay_vao` = `DATE(examination_date)`. `ngay_ra` = `DATE(finish_examination_date)`. `ngay_y_lenh` = `DATE(decision_date)`. `ma_csyt` hồ sơ lấy `medical_records.healthfacilities_id`. `ma_csyt` dịch vụ lấy `medical_records_services.healthfacilities_id` (varchar 255 trên nguồn).
 
-`cats_accidents.accident_id` là khóa chính nên LEFT JOIN không nhân hồ sơ. Chỉ cột `so_tai_nan` đếm `accident_type = 1`.
+`so_ho_so_bh` đếm `IFNULL(is_health_insurance, 0) = 1`. `so_ho_so_khong_bh` đếm giá trị đã coi null là 0 rồi khác 1. CN_264 đọc cùng cột này.
+
+`so_tai_nan` trên fact ngày là tổng hồ sơ `accident_type = 1`, dùng cho CN_280. CN_270 tách `emr_db_tong_hop_tai_nan` vì cần `name_vi`: một ngày nhiều tên nếu nằm trên fact ngày sẽ nhân số hồ sơ, tiền và số ngày.
 
 `examination_date` trên `medical_records_services` đang không có giá trị (đếm dòng khác NULL = 0). CN_284 lấy ngày y lệnh `decision_date`. Câu “cùng examination_date” trong Excel không áp được trên lake.
 
@@ -101,45 +104,79 @@ ORDER BY ngay_vao
 
 CN_268 — `emr_db_tong_hop_luot_kham`
 
+Mỗi dòng là một điểm line: `ngay_vao`, `loai`, `luot`. `BHYT` là cờ bảo hiểm bằng 1. `Không BHYT` là null (coi như 0) hoặc khác 1.
+
 ```sql
 SELECT ngay_vao,
-       SUM(so_ho_so_bh) AS luot_bhyt
-FROM emr_db_tong_hop_luot_kham
-WHERE ma_csyt = :ma_csyt
-  AND ngay_vao >= :from_date
-  AND ngay_vao < :to_date
-  AND (:thang IS NULL OR thang = :thang)
-GROUP BY ngay_vao
-ORDER BY ngay_vao
+       loai,
+       luot
+FROM (
+    SELECT ngay_vao,
+           'BHYT' AS loai,
+           so_ho_so_bh AS luot
+    FROM emr_db_tong_hop_luot_kham
+    WHERE ma_csyt = :ma_csyt
+      AND ngay_vao >= :from_date
+      AND ngay_vao < :to_date
+      AND (:thang IS NULL OR thang = :thang)
+    UNION ALL
+    SELECT ngay_vao,
+           'Không BHYT',
+           so_ho_so_khong_bh
+    FROM emr_db_tong_hop_luot_kham
+    WHERE ma_csyt = :ma_csyt
+      AND ngay_vao >= :from_date
+      AND ngay_vao < :to_date
+      AND (:thang IS NULL OR thang = :thang)
+) x
+ORDER BY ngay_vao, loai
 ```
 
 CN_269 — `emr_db_tong_hop_luot_kham`
 
+Mỗi dòng là một điểm line: `ngay_vao`, `loai`, `luot`. Một hồ sơ vừa cấp cứu vừa tử vong thì có mặt ở cả hai loại.
+
 ```sql
 SELECT ngay_vao,
-       SUM(so_cap_cuu) AS luot_cap_cuu,
-       SUM(so_tu_vong) AS luot_tu_vong
-FROM emr_db_tong_hop_luot_kham
-WHERE ma_csyt = :ma_csyt
-  AND ngay_vao >= :from_date
-  AND ngay_vao < :to_date
-  AND (:thang IS NULL OR thang = :thang)
-GROUP BY ngay_vao
-ORDER BY ngay_vao
+       loai,
+       luot
+FROM (
+    SELECT ngay_vao,
+           'Cấp cứu' AS loai,
+           so_cap_cuu AS luot
+    FROM emr_db_tong_hop_luot_kham
+    WHERE ma_csyt = :ma_csyt
+      AND ngay_vao >= :from_date
+      AND ngay_vao < :to_date
+      AND (:thang IS NULL OR thang = :thang)
+    UNION ALL
+    SELECT ngay_vao,
+           'Tử vong',
+           so_tu_vong
+    FROM emr_db_tong_hop_luot_kham
+    WHERE ma_csyt = :ma_csyt
+      AND ngay_vao >= :from_date
+      AND ngay_vao < :to_date
+      AND (:thang IS NULL OR thang = :thang)
+) x
+ORDER BY ngay_vao, loai
 ```
 
-CN_270 — `emr_db_tong_hop_luot_kham`
+CN_270 — `emr_db_tong_hop_tai_nan`
+
+Mỗi dòng là một điểm line: `ngay_vao`, `loai` (tên tai nạn), `luot`.
 
 ```sql
 SELECT ngay_vao,
-       SUM(so_tai_nan) AS luot
-FROM emr_db_tong_hop_luot_kham
+       ten_tai_nan AS loai,
+       SUM(so_luot) AS luot
+FROM emr_db_tong_hop_tai_nan
 WHERE ma_csyt = :ma_csyt
   AND ngay_vao >= :from_date
   AND ngay_vao < :to_date
   AND (:thang IS NULL OR thang = :thang)
-GROUP BY ngay_vao
-ORDER BY ngay_vao
+GROUP BY ngay_vao, ten_tai_nan
+ORDER BY ngay_vao, loai
 ```
 
 CN_278 — `emr_db_tong_hop_luot_kham`
@@ -281,6 +318,6 @@ CREATE INDEX idx_mrs_update_date ON emr_datalake.medical_records_services (updat
 CREATE INDEX idx_mrs_hf_decision ON emr_datalake.medical_records_services (healthfacilities_id, decision_date);
 ```
 
-3. Airflow variable: `var_emr_db_tong_hop_luot_kham`, `var_emr_db_tong_hop_luot_ra`, `var_emr_db_tong_hop_nhom_dich_vu`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy `update_date` từ 2000-01-01.
-4. Chạy đủ ba pipeline thì `commit` mới ghi khóa và `last_runtime`. Chạy lẻ thì `from_date` / `to_date` giữ nguyên.
+3. Airflow variable: `var_emr_db_tong_hop_luot_kham`, `var_emr_db_tong_hop_luot_ra`, `var_emr_db_tong_hop_tai_nan`, `var_emr_db_tong_hop_nhom_dich_vu`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy `update_date` từ 2000-01-01.
+4. Chạy đủ bốn pipeline thì `commit` mới ghi khóa và `last_runtime`. Chạy lẻ thì `from_date` / `to_date` giữ nguyên.
 5. Deploy DAG rồi mới bật. Task không gán pool `mcc_ds_pool`. `py_compile` không thay cho chạy MySQL.
