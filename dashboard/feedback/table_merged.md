@@ -127,13 +127,13 @@ SELECT ... FROM <bảng>_stg;
 `thoi_gian` không dùng làm khóa xóa vì luôn suy ra từ `ngay_su_dung`.
 
 **DDL fact (prod + stg):** `pipeline/sql/table_merged.sql`.  
-**DDL khóa:** `pipeline/sql/emr_db_medical_records_drugs_key.sql` — khóa dòng thuốc, khóa `treatment_department_days`, bảng năm DDD, khóa `treatment_days`, bảng tháng DDD.
+**DDL khóa:** `pipeline/sql/DDL_cac_bang_key_pair.sql` — khóa dòng thuốc, khóa `treatment_department_days`, bảng năm DDD, khóa `treatment_days`, bảng tháng DDD. Khóa bệnh, lượt khám và cận lâm sàng cũng nằm trong file này.
 
 ---
 
 ## Việc cần làm tiếp (khi duyệt)
 
-1. Tạo mới trên warehouse: chạy `pipeline/sql/table_merged.sql` rồi `pipeline/sql/emr_db_medical_records_drugs_key.sql`.
+1. Tạo mới trên warehouse: chạy `pipeline/sql/DDL_cac_bang_dich.sql` rồi `pipeline/sql/DDL_cac_bang_key_pair.sql`. Phần thuốc trong file fact dùng `CREATE OR REPLACE`.
 2. Deploy DAG medical (task `prepare_drug_keys` trước mọi job, `commit_drug_keys` sau khi cả 8 job thành công).
 3. Cập nhật Dashboard / dynamic report nếu còn filter theo `cskcb` → dùng `ma_csyt`.
 4. Địa bàn / tên CSYT / chỉ tiêu ghi `NULL` — core chỉ cần có cột. `ma_csyt` vẫn là mã cơ sở.

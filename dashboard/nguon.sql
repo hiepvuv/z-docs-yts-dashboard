@@ -551,3 +551,378 @@ create index idx_tdd_hf_year
 create index idx_tdd_update_date
     on treatment_department_days (update_date);
 
+
+create table cats_diseases_groups
+(
+    diseases_group_id     int auto_increment
+        primary key,
+    code                  varchar(50)                          not null,
+    name                  varchar(255)                         not null,
+    order_number          int(4)   default 0                   not null,
+    is_delete             bit      default b'0'                not null,
+    is_treatment_protocol bit      default b'0'                null comment 'phác đồ',
+    is_dashboard          bit      default b'0'                not null comment 'Hiển thị báo cáo trên dashboard  (1=Có, 0=Không)',
+    is_report_hiv         bit      default b'0'                null comment 'Báo cáo HIV (1=Có, 0=Không)',
+    is_dashboard_disease  bit      default b'0'                null comment 'Hiển thị báo cáo bênh trên dashboard (1=Có, 0=Không)',
+    is_report_leprosy     bit      default b'0'                null comment 'Báo cáo Phong (1=Có, 0=Không)',
+    is_report_disease     bit      default b'0'                null comment 'Báo cáo Bệnh không lây nhiễm (1=Có, 0=Không)',
+    is_report_infectious  bit      default b'0'                null comment 'Bệnh truyền nhiễm(1 = Có, 0 = Không)',
+    is_add_malaria        bit      default b'0'                null comment 'Nhập bệnh sốt rét (1=Có, 0=Không)',
+    is_add_mental_illness bit      default b'0'                null comment 'Nhập bệnh tâm thần (1=Có, 0=Không)',
+    is_add_tuberculosis   bit      default b'0'                null comment 'Nhập bệnh lao (1=Có, 0=Không)',
+    is_add_hiv            bit      default b'0'                null comment 'Nhập bệnh HIV (1=Có, 0=Không)',
+    is_add_leprosy        bit      default b'0'                null comment 'Nhập bệnh phong (1=Có, 0=Không)',
+    is_add_disease        bit      default b'0'                null comment 'Nhập bệnh không lây nhiễm  (1=Có, 0=Không)',
+    warning_day           int(4)                               null comment 'Ngưỡng cảnh báo theo ngày',
+    warning_quarter       int(10)                              null comment 'Ngưỡng cảnh báo theo quý',
+    warning_month         int(10)                              null comment 'Ngưỡng cảnh báo theo tháng',
+    warning_year          int(10)                              null comment 'Ngưỡng cảnh báo theo năm',
+    description           varchar(1000)                        null,
+    is_active             bit      default b'1'                null,
+    create_user_id        varchar(50)                          null,
+    create_date           datetime default current_timestamp() null,
+    update_user_id        varchar(50)                          null,
+    update_date           datetime default current_timestamp() null on update current_timestamp()
+)
+    comment 'Danh mục nhóm bệnh' row_format = DYNAMIC;
+
+create table cats_diseases_groups_details
+(
+    detail_id         int auto_increment
+        primary key,
+    diseases_group_id int                                  not null comment 'ID danh mục nhóm bệnh',
+    diseases_code     varchar(50)                          not null comment 'Mã bệnh ICD10',
+    order_number      int(4)   default 0                   not null,
+    description       varchar(1000)                        null,
+    is_delete         bit      default b'0'                not null,
+    is_active         bit      default b'1'                not null,
+    create_user_id    varchar(50)                          null,
+    create_date       datetime default current_timestamp() null,
+    update_user_id    varchar(50)                          null,
+    update_date       datetime default current_timestamp() null on update current_timestamp()
+)
+    comment 'Danh mục Chi tiết mã bệnh theo nhóm' row_format = DYNAMIC;
+
+create index diseases_code_idx
+    on cats_diseases_groups_details (diseases_code);
+
+create table cats_icd10
+(
+    icd10_id              int(55) auto_increment
+        primary key,
+    code_vi               varchar(50)                          not null,
+    name_vi               varchar(255)                         not null,
+    name_en               varchar(255)                         null,
+    system_url            varchar(255)                         null,
+    defining_url          varchar(255)                         null,
+    version               varchar(50)                          null,
+    name_unmarked         varchar(255)                         null,
+    group_id              int                                  null comment 'ID nhóm',
+    chapter_id            int                                  null comment 'ID chương',
+    type_id               int                                  null comment 'Id loại bệnh',
+    group_range           varchar(45)                          null comment 'Phân nhóm, ví dụ A00-A09',
+    itemicd               varchar(45)                          null comment 'Mục ICD - Trong bao cáo xa phuong',
+    is_infectiousdiseases bit      default b'0'                not null comment 'Bệnh truyền nhiễm',
+    type                  int                                  null,
+    is_chronicdiseases    bit      default b'0'                not null comment 'Bệnh mãn tính',
+    is_longtermdiseases   bit      default b'0'                not null comment 'Bệnh dài ngày',
+    is_delete             bit      default b'0'                not null,
+    is_active             bit      default b'1'                not null,
+    create_user_id        varchar(50)                          null,
+    create_date           datetime default current_timestamp() not null,
+    update_user_id        varchar(50)                          null,
+    update_date           datetime default current_timestamp() null on update current_timestamp(),
+    ma_chuong_tam         varchar(50)                          null comment 'Mã chương tạm',
+    ma_nhom_tam           varchar(50)                          null comment 'Mã nhóm tạm',
+    ma_loai_tam           varchar(50)                          null comment 'Mã type tạm',
+    is_sync               int                                  null comment 'is_sync=3 (Thêm mới mã bệnh từ 4210)'
+)
+    comment 'Danh mục bệnh ICD';
+
+create index idx_code
+    on cats_icd10 (code_vi);
+
+create table cats_icd10_chapters
+(
+    chapter_id     int auto_increment
+        primary key,
+    code_vi        varchar(50)                          not null comment 'Cập nhật varchar (50) ngày 09/11/2020',
+    name_vi        varchar(255)                         not null,
+    name_en        varchar(255)                         null,
+    system_url     varchar(255)                         null,
+    defining_url   varchar(255)                         null,
+    version        varchar(50)                          null,
+    name_unmarked  varchar(255)                         null comment 'Tên không dấu',
+    is_delete      bit      default b'0'                not null,
+    is_active      bit      default b'1'                not null,
+    create_user_id varchar(50)                          null,
+    create_date    datetime default current_timestamp() not null,
+    update_user_id varchar(50)                          null,
+    update_date    datetime default current_timestamp() null on update current_timestamp()
+)
+    comment 'Danh mục chương bệnh';
+
+create table medical_records_drugs_diagnoses
+(
+    diagnoses_id      int auto_increment
+        primary key,
+    medical_record_id int                                  not null comment 'Bảng medical_record_id.medical_record_id',
+    patient_id        int                                  null comment 'ID bệnh nhân',
+    drug_record_id    int                                  not null comment 'ID bảng medical_records_drugs',
+    diseases_code     varchar(100)                         null comment 'Mã bệnh ICD10',
+    diseases_tm_code  varchar(100)                         null comment 'Mã bệnh YHCT',
+    diseases_name     text                                 null comment 'Tên bệnh ICD10',
+    diseases_tm_name  text                                 null comment 'Tên bệnh YHCT',
+    diagnostic_group  int(1)                               null comment 'Nhóm chẩn đoán (1 = ICD 10, 0 = YHCT)',
+    notes             text                                 null comment 'Ghi chú',
+    is_sync           int(1)   default 1                   null comment '1= Dữ liệu đồng bộ, 0= Dữ liệu người dùng nhập,2 = Dữ liệu bệnh nhân nhập',
+    is_delete         bit      default b'0'                not null,
+    is_active         bit      default b'1'                not null,
+    create_user_id    varchar(50)                          null,
+    update_user_id    varchar(50)                          null,
+    create_date       datetime default current_timestamp() not null,
+    update_date       datetime default current_timestamp() null on update current_timestamp()
+)
+    comment 'Chẩn đoán theo thuốc';
+
+create index idx_medical_records_drugs_diagnoses_medical_record_id
+    on medical_records_drugs_diagnoses (medical_record_id);
+
+create table medical_records_diagnoses_discharge
+(
+    diagnoses_discharge_id int(11) unsigned auto_increment
+        primary key,
+    medical_record_id      int                                  not null comment 'Bảng medical_record_id.medical_record_id',
+    diseases_code          varchar(50)                          null comment 'Mã bệnh ICD10',
+    diseases_tm_code       varchar(50)                          null comment 'Mã bệnh YHCT',
+    diseases_name          text                                 null comment 'Tên bệnh ICD10',
+    diseases_tm_name       text                                 null comment 'Tên bệnh YHCT',
+    recording_date         datetime                             null comment 'Ngày ghi nhận',
+    recording_user         text                                 null comment 'Người ghi nhận',
+    diagnoses_type         int(1)                               null comment 'Loại chẩn đoán: 1= Bệnh chính, 2=Biến chứng, 3=Bệnh kèm theo, 4=Chẩn đoán phân biệt ',
+    diagnostic_group       int(1)                               null comment 'Nhóm chẩn đoán ( 1 = ICD 10, 0 = YHCT)',
+    notes                  text                                 null comment 'Ghi chú',
+    description            text                                 null comment 'Mô tả (trường hợp nhập text)',
+    is_main                bit      default b'0'                null,
+    is_sync                int(1)   default 1                   null comment '1= Dữ liệu đồng bộ, 0= Dữ liệu người dùng nhập,2 = Dữ liệu bệnh nhân nhập',
+    is_delete              bit      default b'0'                not null,
+    is_active              bit      default b'1'                not null,
+    create_user_id         varchar(50)                          null,
+    update_user_id         varchar(50)                          null,
+    create_date            datetime default current_timestamp() not null,
+    update_date            datetime default current_timestamp() null on update current_timestamp(),
+    recording_day          date as (cast(`recording_date` as date)) stored,
+    healthfacilities_id    varchar(50)                          null
+)
+    comment 'Chẩn đoán xuất viện (XML1)';
+
+create index idx_medical_records_diagnoses_discharge_diseases_code
+    on medical_records_diagnoses_discharge (diseases_code);
+
+create index idx_medical_records_diagnoses_discharge_medical_record_id
+    on medical_records_diagnoses_discharge (medical_record_id);
+
+create index idx_mrdd_diagnoses_type
+    on medical_records_diagnoses_discharge (diagnoses_type);
+
+create index idx_mrdd_recording_date
+    on medical_records_diagnoses_discharge (recording_date);
+
+create index idx_mrdd_recording_day
+    on medical_records_diagnoses_discharge (recording_day);
+
+
+
+-- ADD: SHOW CREATE TABLE từ emr_datalake cho nhóm lượt khám CN_264–CN_286.
+-- medical_records đã có ở trên, không ghi đè.
+
+CREATE TABLE `cats_accidents` (
+  `accident_id` varchar(50) NOT NULL DEFAULT '0',
+  `name_vi` varchar(255) NOT NULL,
+  `name_bhyt` varchar(255) NOT NULL,
+  `code_bhyt` varchar(255) NOT NULL,
+  `code_vi` varchar(255) DEFAULT NULL,
+  `name_en` varchar(255) DEFAULT NULL,
+  `system_url` varchar(255) DEFAULT NULL,
+  `defining_url` varchar(255) DEFAULT NULL,
+  `version` varchar(50) DEFAULT NULL,
+  `order_number` int(4) NOT NULL DEFAULT 0,
+  `accident_type` int(1) NOT NULL DEFAULT 1 COMMENT 'Loại (1=Nguyên nhân tai nạn, 2=Bộ phận bị thương)',
+  `description` varchar(1000) DEFAULT NULL,
+  `is_delete` bit(1) NOT NULL DEFAULT b'0',
+  `is_active` bit(1) NOT NULL DEFAULT b'1',
+  `create_user_id` varchar(50) DEFAULT NULL,
+  `create_date` datetime DEFAULT current_timestamp(),
+  `update_user_id` varchar(50) DEFAULT NULL,
+  `update_date` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  PRIMARY KEY (`accident_id`) USING BTREE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Danh mục tai nạn'
+
+CREATE TABLE `medical_records_services` (
+  `record_service_id` int(11) NOT NULL AUTO_INCREMENT,
+  `medical_record_id` int(11) DEFAULT NULL COMMENT 'Bảng medical_record_id.medical_record_id',
+  `patient_id` int(11) DEFAULT NULL COMMENT 'Id bệnh nhân',
+  `cost_group_id` int(11) NOT NULL COMMENT 'XML3.MA_NHOM (Mapping từ bảng cats_cost_groups.cost_group_id)',
+  `his_id` varchar(100) DEFAULT NULL COMMENT 'XML3.MA_LK hoặc  cv365.KetquaChanDoanHinhAnh.sovaovien hoặc cv365.KetquaXetNghiem.sovaovien hoặc cv365.PhieuThuThuat.sovaovien hoặc cv365.PhieuPhauThuat.sovaovien',
+  `order_number` int(11) DEFAULT NULL COMMENT 'XML3.STT',
+  `service_code` varchar(50) DEFAULT NULL COMMENT 'XML3.MA_DICH_VU',
+  `surgery_icd9_cm_code` varchar(50) DEFAULT NULL COMMENT 'XML3.MA_PTTT_QT',
+  `material_code` varchar(50) DEFAULT NULL COMMENT 'XML3.MA_VAT_TU',
+  `medical_supplies_package` varchar(50) DEFAULT NULL COMMENT 'XML3.GOI_VTYT',
+  `material_name` text DEFAULT NULL COMMENT 'XML3.TEN_VAT_TU',
+  `service_name` text NOT NULL COMMENT 'XML3.TEN_DICH_VU',
+  `petrol_code` text DEFAULT NULL COMMENT 'XML3.MA_XANG_DAU',
+  `unit` varchar(255) DEFAULT NULL COMMENT 'XML3.DON_VI_TINH',
+  `ranges` varchar(50) DEFAULT NULL COMMENT 'XML3.PHAM_VI Ghi mã phạm vi của vật tư y tế (1: Vật tư y tế trong phạm vi hưởng BHYT (trong danh mục BHYT); 2: Vật tư y tế ngoài phạm vi hưởng BHYT (ngoài danh mục BHYT))',
+  `quantity` decimal(11,2) DEFAULT 1.00 COMMENT 'XML3.SO_LUONG',
+  `unit_prices` decimal(10,2) DEFAULT NULL COMMENT 'XML3.DON_GIA_BV',
+  `unit_prices_insurance` decimal(10,2) DEFAULT NULL COMMENT 'XML3.DON_GIA_BH',
+  `healthfacilities_id` varchar(255) DEFAULT NULL COMMENT 'XML1.MA_CSKCB',
+  `bidding_information` varchar(255) DEFAULT NULL COMMENT 'XML3.TT_THAU',
+  `payment_rate` decimal(20,0) DEFAULT 0 COMMENT 'XML3.TYLE_TT_DV',
+  `payment_rate_insurance` decimal(20,0) DEFAULT 0 COMMENT 'XML3.TYLE_TT_BH',
+  `total_money` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.THANH_TIEN_BV',
+  `total_money_insurance` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.THANH_TIEN_BH',
+  `payment_ceiling` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.T_TRANTT',
+  `level_insurance_coverage` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.MUC_HUONG',
+  `state_budget_support` decimal(15,2) DEFAULT NULL COMMENT 'XML3.T_NGUONKHAC_NSNN',
+  `budget_support_out` decimal(15,2) DEFAULT NULL COMMENT 'XML3.T_NGUONKHAC_VTNN',
+  `budget_support_in` decimal(15,2) DEFAULT NULL COMMENT 'XML3.T_NGUONKHAC_VTTN',
+  `budget_support_other` decimal(15,2) DEFAULT NULL COMMENT 'XML3.T_NGUONKHAC_CL',
+  `other_souces_money` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.T_NGUONKHAC',
+  `patient_pay_together_money` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.T_BNCCT',
+  `insurance_money` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.T_BHTT',
+  `patient_money` decimal(20,2) DEFAULT 0.00 COMMENT 'XML3.T_BNTT',
+  `faculty_treatment_id` varchar(50) DEFAULT NULL COMMENT 'XML3.MA_KHOA hoặc cv365.KetquaXetNghiem.khoa HOẶC cv365.PhieuThuThuat.khoa_ma; HOẶC (cv365.PhieuPhauThuat.khoa_ma)',
+  `faculty_treatment_name` varchar(255) DEFAULT NULL COMMENT 'XML3.MA_KHOA hoặc cv365.KetquaXetNghiem.khoa HOẶC cv365.PhieuThuThuat.khoa; HOẶC (cv365.PhieuPhauThuat.khoa)',
+  `bed_code` varchar(50) DEFAULT NULL COMMENT 'XML3.MA_GIUONG hoặc  (cv365.PhieuThuThuat.giuong) HOẶC (cv365.PhieuPhauThuat.giuong)',
+  `doctor_decision_code` varchar(255) DEFAULT NULL COMMENT 'XML3.MA_BAC_SI hoặc cv365.KetquaChanDoanHinhAnh.mabacsichidinh hoặc  cv365.KetquaXetNghiem.mabacsichidinh',
+  `doctor_decision_name` varchar(255) DEFAULT NULL COMMENT 'XML3.MA_BAC_SI cv365.KetquaChanDoanHinhAnh.bacsichidinh hoặc  cv365.KetquaXetNghiem.bacsichidinh',
+  `doctor_implementation_code` varchar(255) DEFAULT NULL COMMENT 'XML3.NGUOI_THUC_HIEN hoặc cv365.KetquaChanDoanHinhAnh.mabacsithuchien hoặc cv365.KetquaXetNghiem.manguoithuchienxetnghiem HOẶC cv365.PhieuThuThuat.maphauthuatvien; HOẶC cv365.PhieuPhauThuat.maphauthuatvien',
+  `doctor_implementation_name` varchar(255) DEFAULT NULL COMMENT 'XML3.NGUOI_THUC_HIEN hoặc cv365.KetquaChanDoanHinhAnh.bacsithuchien hoặc cv365.KetquaXetNghiem.nguoithuchienxetnghiem HOẶC cv365.PhieuThuThuat.phauthuatvien; HOẶC cv365.PhieuPhauThuat.phauthuatvien',
+  `diagnoses_code` varchar(255) DEFAULT NULL COMMENT 'XML3.MA_BENH hoặc cv365.PhieuThuThuat.maicd',
+  `diagnoses_name` varchar(255) DEFAULT NULL COMMENT 'cv365.PhieuThuThuat.tenicd',
+  `diagnoses_desc` text DEFAULT NULL COMMENT 'cv365.PhieuThuThuat.motabenh',
+  `diagnoses_code_tm` varchar(255) DEFAULT NULL COMMENT 'XML3.MA_BENH_YHCT',
+  `decision_date` datetime DEFAULT NULL COMMENT 'XML3.NGAY_YL',
+  `implementation_date` datetime DEFAULT NULL COMMENT 'XML3.NGAY_TH_YL',
+  `result_date` datetime DEFAULT NULL COMMENT 'XML3.NGAY_KQ hoặc cv365.KetquaChanDoanHinhAnh.ngayketqua',
+  `payment_form_code` int(11) DEFAULT NULL COMMENT 'XML3.MA_PTTT --> Mã phương thức thanh toán (0: Phí dịch vụ; 1: định suất; 2: ngoài định suất; 3: DRG)',
+  `wound_recurs` int(1) DEFAULT NULL COMMENT 'XML3.VET_THUONG_TP',
+  `surgery_insensitivity_method` varchar(255) DEFAULT NULL COMMENT 'XML3.PP_VO_CAM hoặc  (cv365.PhieuThuThuat.phuongphapvocam)',
+  `body_part_id` varchar(50) DEFAULT NULL COMMENT 'XML3.VI_TRI_TH_DVKT',
+  `body_part_name` varchar(255) DEFAULT NULL COMMENT 'XML3.VI_TRI_TH_DVKT',
+  `equiqment_code` text DEFAULT NULL COMMENT 'XML3.MA_MAY',
+  `product_code` varchar(255) DEFAULT NULL COMMENT 'XML3.MA_HIEU_SP',
+  `is_reuse` tinyint(1) DEFAULT NULL COMMENT 'XML3.TAI_SU_DUNG',
+  `backup` text DEFAULT NULL COMMENT 'XML3.DU_PHONG',
+  `form_code` varchar(255) DEFAULT NULL COMMENT 'cv365.KetquaChanDoanHinhAnh.sophieu hoặc  cv365.KetquaXetNghiem.sophieu hoặc cv365.PhieuThuThuat.sophieu; hoặc cv365.PhieuPhauThuat.sophieu',
+  `designation_code` varchar(255) DEFAULT NULL COMMENT 'Mã chỉ định (cv365.KetquaChanDoanHinhAnh.machidinh)',
+  `diagnose_desc` varchar(255) DEFAULT NULL COMMENT 'Chẩn đoán (cv365.KetquaChanDoanHinhAnh.chandoan hoặc  cv365.KetquaXetNghiem.chandoan hoặc cv365.PhieuThuThuat.cdsauphauthuat)',
+  `image_desc` varchar(255) DEFAULT NULL COMMENT 'Hình ảnh (cv365.KetquaChanDoanHinhAnh.hinhanh)',
+  `suggestions` text DEFAULT NULL COMMENT 'Đề nghị (cv365.KetquaChanDoanHinhAnh.kqcls_denghi)',
+  `concludes` text DEFAULT NULL COMMENT 'Kết luận (cv365.KetquaChanDoanHinhAnh.kqcls_ketluan)',
+  `results` text DEFAULT NULL COMMENT 'Kết quả (cv365.KetquaChanDoanHinhAnh.kqcls_mota)',
+  `notes` text DEFAULT NULL COMMENT 'Ghi chú (cv365.KetquaXetNghiem.ghichu hoặc cv365.PhieuThuThuat.ghichu)',
+  `link_pacs_view` text DEFAULT NULL COMMENT 'Link PacsViewDicom(cv365.KetquaChanDoanHinhAnh.kqcls_linkhinhanh)',
+  `patient_object` varchar(255) DEFAULT NULL COMMENT 'Đối tượng người bệnh (cv365.KetquaXetNghiem.doituongbn)',
+  `execution_date` datetime DEFAULT NULL COMMENT 'Ngày giờ lấy mẫu (cv365.KetquaXetNghiem.giolaymau)',
+  `specimen_code` varchar(255) DEFAULT NULL COMMENT 'Mã số bệnh phẩm (cv365.KetquaXetNghiem.masobenhpham)',
+  `designated_place` varchar(255) DEFAULT NULL COMMENT 'Nơi thực hiện chỉ định (cv365.KetquaXetNghiem.noithuchienchidinh)',
+  `sample_type` varchar(255) DEFAULT NULL COMMENT 'Loại mẫu ',
+  `surgery_name` text DEFAULT NULL COMMENT 'Tên loại PTTT [cv365.PhieuPhauThuat.dvpt]',
+  `surgery_method` text DEFAULT NULL COMMENT 'Phương pháp PTTT (cv365.PhieuThuThuat.phuongphapphauthuat)',
+  `surgery_procedures` text DEFAULT NULL COMMENT 'Trình tự PTTT (cv365.PhieuThuThuat.trinhtuphauthuatthuthuat; HOẶC cv365.PhieuPhauThuat.trinhtuphauthuatthuthuat)',
+  `surgery_room` varchar(255) DEFAULT NULL COMMENT 'Buồng (cv365.PhieuThuThuat.buong) HOẶC (cv365.PhieuPhauThuat.buong)',
+  `examination_date` datetime DEFAULT NULL COMMENT 'Ngày giờ vào viện (cv365.PhieuThuThuat.ngaygiovaovien) HOẶC (cv365.PhieuPhauThuat.ngaygiovaovien)',
+  `surgery_gender` varchar(255) DEFAULT NULL COMMENT 'Giới tính  (cv365.PhieuThuThuat.gioitinh) HOẶC (cv365.PhieuPhauThuat.gioitinh)',
+  `surgery_wick` varchar(255) DEFAULT NULL COMMENT 'Bấc (cv365.PhieuThuThuat.bac)',
+  `surgical_diagram` text DEFAULT NULL COMMENT 'Lược đồ phẫu thuật (cv365.PhieuThuThuat.luocdophauthuat) HOẶC [cv365.hieuPhauThuat.luocdophauthuat]',
+  `surgery_date` varchar(50) DEFAULT NULL COMMENT 'Ngày giờ phẫu thuật (cv365.PhieuThuThuat.ngaygiophauthuat) HOẶC [cv365.hieuPhauThuat.ngaygiophauthuat]',
+  `surgery_anesthesiologist_code` varchar(255) DEFAULT NULL COMMENT 'Mã bác sĩ gây mê hồi sức (cv365.PhieuThuThuat.mabacsigaymehoisuc) HOẶC (cv365.PhieuPhauThuat.mabacsigaymehoisuc)',
+  `surgery_anesthesiologist_name` varchar(255) DEFAULT NULL COMMENT 'Bác sĩ gây mê hồi sức (cv365.PhieuThuThuat.bacsigaymehoisuc) HOẶC (cv365.PhieuPhauThuat.bacsigaymehoisuc)',
+  `surgery_sub_anesthesiologist_code` varchar(255) DEFAULT NULL COMMENT 'Mã Bác sĩ gây mê hồi sức phụ 1(cv365.PhieuPhauThuat.mabacsigaymehoisuc_phu1)',
+  `surgery_sub_anesthesiologist_name` varchar(255) DEFAULT NULL COMMENT 'Bác sĩ gây mê hồi sức phụ 1  (cv365.PhieuPhauThuat.bacsigaymehoisuc_phu1)',
+  `year_old` int(11) DEFAULT NULL COMMENT 'Tuổi (cv365.PhieuThuThuat.tuoi) Hoặc [cv365.PhieuPhauThuat.tuoi]',
+  `surgery_code` varchar(255) DEFAULT NULL COMMENT 'Mã loại PTTT ',
+  `surgery_type` text DEFAULT NULL COMMENT 'Loại PTTT (cv365.PhieuThuThuat.loaiphauthuat) Hoặc [cv365.PhieuPhauThuat.loaiphauthuat]',
+  `surgery_sutures_withdraw_date` datetime DEFAULT NULL COMMENT 'Ngày rút chỉ (cv365.PhieuThuThuat.ngayrutchi)',
+  `surgery_sutures_cut_date` datetime DEFAULT NULL COMMENT 'Ngày cắt chỉ (cv365.PhieuThuThuat.ngaycatchi)',
+  `surgery_drain` varchar(255) DEFAULT NULL COMMENT 'Dẫn lưu (cv365.PhieuThuThuat.danluu)',
+  `surgery_accessories` text DEFAULT NULL COMMENT 'Phụ dụng cụ (cv365.PhieuPhauThuat.phudungcu)',
+  `surgery_surgical_assistant` text DEFAULT NULL COMMENT 'Phụ phẫu thuật (cv365.PhieuPhauThuat.phuphauthuat)',
+  `surgery_outpatient_nursing` varchar(255) DEFAULT NULL COMMENT 'Điều dưỡng vòng ngoài (cv365.PhieuPhauThuat.ddvongngoai)',
+  `surgery_notes` varchar(255) DEFAULT NULL,
+  `surgery_icd9_cm_name` varchar(1024) DEFAULT NULL COMMENT 'Tên theo ICD-9 CM Vol3',
+  `external_capacity_money` decimal(20,2) DEFAULT 0.00 COMMENT 'Tiền ngoài định suất',
+  `sample_status` text DEFAULT NULL COMMENT 'Tình trạng mẫu',
+  `treatments` text DEFAULT NULL COMMENT 'Phương pháp điều trị khi kết thúc ra viện',
+  `is_health_insurance` bit(1) NOT NULL DEFAULT b'0' COMMENT 'Xác định có thanh toán BHYT hay không (1=Có, 0=Không)',
+  `is_delete` bit(1) NOT NULL DEFAULT b'0',
+  `is_active` bit(1) NOT NULL DEFAULT b'1',
+  `is_sync` int(1) DEFAULT 1 COMMENT '1= Dữ liệu đồng bộ, 0= Dữ liệu người dùng nhập,2 = Dữ liệu bệnh nhân nhập',
+  `create_user_id` varchar(50) DEFAULT NULL,
+  `create_date` datetime NOT NULL DEFAULT current_timestamp(),
+  `update_user_id` varchar(50) DEFAULT NULL,
+  `update_date` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `doctor_implementation_code_long` text DEFAULT NULL,
+  `equiqment_code_long` text DEFAULT NULL,
+  `decision_day` date GENERATED ALWAYS AS (cast(`decision_date` as date)) STORED,
+  `implementation_day` date GENERATED ALWAYS AS (cast(`implementation_date` as date)) STORED,
+  `result_day` date GENERATED ALWAYS AS (cast(`result_date` as date)) STORED,
+  `execution_day` date GENERATED ALWAYS AS (cast(`execution_date` as date)) STORED,
+  `last_decision_date` datetime DEFAULT NULL,
+  `last_decision_day` date GENERATED ALWAYS AS (cast(`last_decision_date` as date)) STORED,
+  `last_implementation_date` datetime DEFAULT NULL,
+  `last_implementation_day` date GENERATED ALWAYS AS (cast(`last_implementation_date` as date)) STORED,
+  `medical_record_number` varchar(20) DEFAULT NULL,
+  `preoperative_diagnosis` text DEFAULT NULL COMMENT 'Chuẩn đoán trước PT/TT',
+  `start_time` datetime DEFAULT NULL COMMENT 'Thời gian bắt đầu PT/TT',
+  `end_time` datetime DEFAULT NULL COMMENT 'Thời gian kết thúc PT/TT',
+  `surgeon_name` varchar(255) DEFAULT NULL COMMENT 'Bác sĩ PT/TT',
+  `procedure_description` text DEFAULT NULL COMMENT 'Diễn biến phẫu thuật (Mô tả)',
+  `procedure_result` varchar(20) DEFAULT NULL COMMENT 'Kết quả',
+  `complications` varchar(50) DEFAULT NULL COMMENT 'Tai biến',
+  `postoperative_condition` text DEFAULT NULL COMMENT 'Tình trạng sau PT/TT',
+  `is_check_data` bit(1) DEFAULT b'0' COMMENT 'Xác định là đã check Kiểm tra hồ sơ BHYT chưa (1=Đã check, 0=Chưa check)',
+  `check_data_date` datetime DEFAULT NULL COMMENT 'Ngày kiểm tra quy tắc dữ liệu thanh toán BHYT',
+  `check_data_content` tinytext DEFAULT NULL,
+  `rule_id` int(11) DEFAULT NULL COMMENT 'ID Rule vi phạm (bảng insurance_rules)',
+  `alert_level` tinyint(1) DEFAULT NULL COMMENT 'Mức độ cảnh báo hồ sơ (1=Cảnh báo ; 2=Xuất toán)',
+  `treatment_direction` text DEFAULT NULL COMMENT 'Hướng điều trị tiếp',
+  PRIMARY KEY (`record_service_id`) USING BTREE,
+  KEY `idx_medical_records_services_medical_record_id` (`medical_record_id`) USING BTREE,
+  KEY `idx_medical_records_services_cost_group_id` (`cost_group_id`) USING BTREE,
+  KEY `idx_decision_date` (`decision_date`) USING BTREE,
+  KEY `idx_mrs_decision_day` (`decision_day`) USING BTREE,
+  KEY `idx_mrs_diagnoses_code` (`diagnoses_code`) USING BTREE,
+  KEY `idx_mrs_doctor_decision_code` (`doctor_decision_code`) USING BTREE,
+  KEY `idx_mrs_faculty_treatment_id` (`faculty_treatment_id`) USING BTREE,
+  KEY `idx_mrs_healthfacilities_id` (`healthfacilities_id`) USING BTREE,
+  KEY `idx_mrs_material_code` (`material_code`) USING BTREE,
+  KEY `idx_mrs_service_code` (`service_code`) USING BTREE,
+  KEY `idx_mrs_surgery_icd9_cm_code` (`surgery_icd9_cm_code`) USING BTREE,
+  KEY `idx_mrs_rpt_decision` (`healthfacilities_id`(191),`cost_group_id`,`is_active`,`is_delete`,`decision_date`),
+  KEY `idx_mrs_rpt_implementation` (`healthfacilities_id`(191),`cost_group_id`,`is_active`,`is_delete`,`implementation_date`),
+  KEY `idx_mrs_report_implementation_no_hf` (`cost_group_id`,`is_active`,`is_delete`,`implementation_date`,`medical_record_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=19119671 DEFAULT CHARSET=utf8 ROW_FORMAT=DYNAMIC COMMENT='Bảng chứa thông tin xét nghiệm, chẩn đoán hình ảnh, PTTT, VTYT,..'
+
+CREATE TABLE `cats_cost_groups` (
+  `cost_group_id` int(11) NOT NULL AUTO_INCREMENT,
+  `code_vi` varchar(50) NOT NULL,
+  `name_vi` varchar(255) NOT NULL,
+  `name_en` varchar(255) DEFAULT NULL,
+  `system_url` varchar(255) DEFAULT NULL,
+  `defining_url` varchar(255) DEFAULT NULL,
+  `version` varchar(50) DEFAULT NULL,
+  `order_number` int(4) NOT NULL DEFAULT 0,
+  `description` varchar(1000) DEFAULT NULL,
+  `is_delete` bit(1) NOT NULL DEFAULT b'0',
+  `is_active` bit(1) NOT NULL DEFAULT b'1',
+  `create_user_id` varchar(50) DEFAULT NULL,
+  `create_date` datetime DEFAULT current_timestamp(),
+  `update_user_id` varchar(50) DEFAULT NULL,
+  `update_date` datetime DEFAULT current_timestamp() ON UPDATE current_timestamp(),
+  `type_of_cost` int(11) DEFAULT NULL COMMENT '1. Dịch vụ kỹ thuật; 2.Thuốc; 3. Vật tư y tế; 4. Máu và chế phẩm máu',
+  PRIMARY KEY (`cost_group_id`) USING BTREE
+) ENGINE=InnoDB AUTO_INCREMENT=19 DEFAULT CHARSET=utf8 COMMENT='Danh mục Nhóm chi phí 4210'
