@@ -8,8 +8,10 @@ Các màn còn lại không dùng fact bệnh: ngày là `examination_date` ho�
 
 | Fact | Màn | Grain |
 |---|---|---|
-| `emr_db_tong_hop_luot_kham` | CN_264–CN_269, CN_278, CN_280–CN_283, CN_285, CN_286 | cơ sở + ngày vào |
-| `emr_db_tong_hop_luot_ra` | CN_266 (lượt ra) | cơ sở + ngày ra |
+| `emr_db_tong_hop_luot_kham` | CN_264, CN_265, CN_267, CN_278, CN_280–CN_283, CN_285, CN_286 | cơ sở + ngày vào |
+| `emr_db_tong_hop_luot_vao_ra` | CN_266 | cơ sở + ngày biểu đồ |
+| `emr_db_tong_hop_luot_bhyt` | CN_268 | cơ sở + ngày vào + loại BHYT |
+| `emr_db_tong_hop_cap_cuu_tu_vong` | CN_269 | cơ sở + ngày vào + loại cấp cứu/tử vong |
 | `emr_db_tong_hop_tai_nan` | CN_270 | cơ sở + ngày vào + tên tai nạn |
 | `emr_db_tong_hop_nhom_dich_vu` | CN_284 | cơ sở + ngày y lệnh + nhóm chi phí + mã hồ sơ |
 
@@ -25,7 +27,9 @@ CN_284 giữ `ma_hs` vì số hồ sơ trong tháng là `COUNT(DISTINCT ma_hs)`.
 
 CN_285 có đích mong muốn trùng CN_283 (tổng số ngày điều trị nội trú). Tên màn nói cơ cấu chi phí nhưng file không nêu cột tiền. SQL làm theo đích đã ghi, không tự thêm cột tiền thành phần.
 
-Khóa xóa-ghi hồ sơ: hợp của ngày vào và ngày ra trên `emr_db_changed_record_pair`. Khóa dịch vụ: `emr_db_changed_service_pair`. `prepare` quét `update_date` hồ sơ và dòng dịch vụ. Hồ sơ đổi cũng kéo dòng dịch vụ của hồ sơ đó, vì cờ xóa hồ sơ không sửa `update_date` dòng dịch vụ. `commit` khi cả ba job thành công. Thứ Hai quét thêm 45 ngày `examination_date` và `decision_date` vì đổi danh mục tai nạn hoặc tên nhóm chi phí không chạm `update_date`.
+Khóa xóa-ghi hồ sơ: hợp của ngày vào và ngày ra trên `emr_db_changed_record_pair`. Khóa dịch vụ: `emr_db_changed_service_pair`. `prepare` quét `update_date` hồ sơ và dòng dịch vụ. Hồ sơ đổi cũng kéo dòng dịch vụ của hồ sơ đó, vì cờ xóa hồ sơ không sửa `update_date` dòng dịch vụ. `commit` khi cả sáu job thành công. Thứ Hai quét thêm 45 ngày `examination_date` và `decision_date` vì đổi danh mục tai nạn hoặc tên nhóm chi phí không chạm `update_date`.
+
+CN_266, CN_268, CN_269 ghi sẵn hình dòng mà tool gen dashboard đọc được. Tool không đọc subquery, nên không UNION lúc SELECT. `emr_db_tong_hop_luot_ra` không còn job.
 
 DAG: `EMR_DASHBOARD_VISIT_MASTER_DAG`, lịch `0 3 * * *`. Không gắn vào DAG thuốc hoặc DAG bệnh.
 
@@ -62,29 +66,20 @@ GROUP BY ngay_vao
 ORDER BY ngay_vao
 ```
 
-CN_266 — `emr_db_tong_hop_luot_kham`, `emr_db_tong_hop_luot_ra`
+CN_266 — `emr_db_tong_hop_luot_vao_ra`
+
+Một dòng một ngày. `ngay` là ngày trên biểu đồ: lượt vào đếm `examination_date` của loại khám 3, 4, 9; lượt ra đếm `finish_examination_date` của mọi hồ sơ. Ngày chỉ có một phía thì phía kia bằng 0.
 
 ```sql
-SELECT ngay,
-       SUM(so_luot_vao) AS so_luot_vao,
-       SUM(so_luot_ra)  AS so_luot_ra
-FROM (
-    SELECT ngay_vao AS ngay, so_noi_tru AS so_luot_vao, 0 AS so_luot_ra
-    FROM emr_db_tong_hop_luot_kham
-    WHERE ma_csyt = :ma_csyt
-      AND ngay_vao >= :from_date
-      AND ngay_vao < :to_date
-      AND (:thang IS NULL OR thang = :thang)
-    UNION ALL
-    SELECT ngay_ra, 0, so_luot_ra
-    FROM emr_db_tong_hop_luot_ra
-    WHERE ma_csyt = :ma_csyt
-      AND ngay_ra >= :from_date
-      AND ngay_ra < :to_date
-      AND (:thang IS NULL OR thang = :thang)
-) x
-GROUP BY ngay
-ORDER BY ngay
+SELECT ngay_theo_doi AS ngay,
+       so_luot_vao,
+       so_luot_ra
+FROM emr_db_tong_hop_luot_vao_ra
+WHERE ma_csyt = :ma_csyt
+  AND ngay_theo_doi >= :from_date
+  AND ngay_theo_doi < :to_date
+  AND (:thang IS NULL OR thang = :thang)
+ORDER BY ngay_theo_doi
 ```
 
 CN_267 — `emr_db_tong_hop_luot_kham`
@@ -102,63 +97,35 @@ GROUP BY ngay_vao
 ORDER BY ngay_vao
 ```
 
-CN_268 — `emr_db_tong_hop_luot_kham`
+CN_268 — `emr_db_tong_hop_luot_bhyt`
 
-Mỗi dòng là một điểm line: `ngay_vao`, `loai`, `luot`. `BHYT` là cờ bảo hiểm bằng 1. `Không BHYT` là null (coi như 0) hoặc khác 1.
+Mỗi dòng là một điểm line: `ngay_vao`, `loai`, `luot`. `BHYT` là cờ bảo hiểm bằng 1. `Không BHYT` là null (coi như 0) hoặc khác 1. Ngày có hồ sơ thì cả hai loại đều có dòng, kể cả số 0.
 
 ```sql
 SELECT ngay_vao,
        loai,
        luot
-FROM (
-    SELECT ngay_vao,
-           'BHYT' AS loai,
-           so_ho_so_bh AS luot
-    FROM emr_db_tong_hop_luot_kham
-    WHERE ma_csyt = :ma_csyt
-      AND ngay_vao >= :from_date
-      AND ngay_vao < :to_date
-      AND (:thang IS NULL OR thang = :thang)
-    UNION ALL
-    SELECT ngay_vao,
-           'Không BHYT',
-           so_ho_so_khong_bh
-    FROM emr_db_tong_hop_luot_kham
-    WHERE ma_csyt = :ma_csyt
-      AND ngay_vao >= :from_date
-      AND ngay_vao < :to_date
-      AND (:thang IS NULL OR thang = :thang)
-) x
+FROM emr_db_tong_hop_luot_bhyt
+WHERE ma_csyt = :ma_csyt
+  AND ngay_vao >= :from_date
+  AND ngay_vao < :to_date
+  AND (:thang IS NULL OR thang = :thang)
 ORDER BY ngay_vao, loai
 ```
 
-CN_269 — `emr_db_tong_hop_luot_kham`
+CN_269 — `emr_db_tong_hop_cap_cuu_tu_vong`
 
-Mỗi dòng là một điểm line: `ngay_vao`, `loai`, `luot`. Một hồ sơ vừa cấp cứu vừa tử vong thì có mặt ở cả hai loại.
+Mỗi dòng là một điểm line: `ngay_vao`, `loai`, `luot`. Một hồ sơ vừa cấp cứu vừa tử vong thì có mặt ở cả hai loại. Ngày có hồ sơ thì cả hai loại đều có dòng, kể cả số 0.
 
 ```sql
 SELECT ngay_vao,
        loai,
        luot
-FROM (
-    SELECT ngay_vao,
-           'Cấp cứu' AS loai,
-           so_cap_cuu AS luot
-    FROM emr_db_tong_hop_luot_kham
-    WHERE ma_csyt = :ma_csyt
-      AND ngay_vao >= :from_date
-      AND ngay_vao < :to_date
-      AND (:thang IS NULL OR thang = :thang)
-    UNION ALL
-    SELECT ngay_vao,
-           'Tử vong',
-           so_tu_vong
-    FROM emr_db_tong_hop_luot_kham
-    WHERE ma_csyt = :ma_csyt
-      AND ngay_vao >= :from_date
-      AND ngay_vao < :to_date
-      AND (:thang IS NULL OR thang = :thang)
-) x
+FROM emr_db_tong_hop_cap_cuu_tu_vong
+WHERE ma_csyt = :ma_csyt
+  AND ngay_vao >= :from_date
+  AND ngay_vao < :to_date
+  AND (:thang IS NULL OR thang = :thang)
 ORDER BY ngay_vao, loai
 ```
 
@@ -318,6 +285,6 @@ CREATE INDEX idx_mrs_update_date ON emr_datalake.medical_records_services (updat
 CREATE INDEX idx_mrs_hf_decision ON emr_datalake.medical_records_services (healthfacilities_id, decision_date);
 ```
 
-3. Airflow variable: `var_emr_db_tong_hop_luot_kham`, `var_emr_db_tong_hop_luot_ra`, `var_emr_db_tong_hop_tai_nan`, `var_emr_db_tong_hop_nhom_dich_vu`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy `update_date` từ 2000-01-01.
-4. Chạy đủ bốn pipeline thì `commit` mới ghi khóa và `last_runtime`. Chạy lẻ thì `from_date` / `to_date` giữ nguyên.
+3. Airflow variable: `var_emr_db_tong_hop_luot_kham`, `var_emr_db_tong_hop_luot_vao_ra`, `var_emr_db_tong_hop_luot_bhyt`, `var_emr_db_tong_hop_cap_cuu_tu_vong`, `var_emr_db_tong_hop_tai_nan`, `var_emr_db_tong_hop_nhom_dich_vu`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy `update_date` từ 2000-01-01. Biến `var_emr_db_tong_hop_luot_ra` không còn job.
+4. Chạy đủ sáu pipeline thì `commit` mới ghi khóa và `last_runtime`. Chạy lẻ thì `from_date` / `to_date` giữ nguyên.
 5. Deploy DAG rồi mới bật. Task không gán pool `mcc_ds_pool`. `py_compile` không thay cho chạy MySQL.
