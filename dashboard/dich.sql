@@ -1,6 +1,7 @@
 -- ADD: fact dashboard trên emr_datawarehouse. Không gồm bảng key-pair.
 -- Key-pair: pipeline/sql/DDL_cac_bang_key_pair.sql
--- CREATE TABLE IF NOT EXISTS: chạy lại không xóa fact đã có.
+-- UPDATE: nhóm và chương dùng CREATE OR REPLACE vì thêm cccd cạnh ma_bn. Chạy lại xóa dữ liệu hai bảng đó.
+-- emr_db_tong_hop_benh và các fact lượt khám / CLS / PTTT bên dưới: CREATE OR REPLACE, xóa dữ liệu bảng đó rồi nạp lại.
 -- Fact thuốc nằm ở pipeline/sql/DDL_cac_bang_dich.sql.
 
 -- ADD: fact bệnh tật CN_308–CN_313 và staging.
@@ -12,16 +13,17 @@
 -- =============================================================================
 -- 1) Bệnh theo nhóm — CN_308, CN_310, CN_279
 -- Một mã ICD thuộc nhiều nhóm thì mỗi nhóm một dòng (số lượt / tử vong nhân theo nhóm).
--- so_ca không lưu: dashboard COUNT(DISTINCT ma_bn). Cộng so_ca theo ngày sẽ đếm trùng người.
+-- so_ca không lưu: dashboard COUNT(DISTINCT ma_bn, cccd). Cộng so_ca theo ngày sẽ đếm trùng người.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh_nhom
+CREATE OR REPLACE TABLE emr_db_tong_hop_benh_nhom
 (
     id                   bigint auto_increment primary key,
     ma_benh              varchar(50)                              null comment 'Mã bệnh ICD10, mrd.diseases_code',
     ten_benh             text                                     null comment 'Tên bệnh, mrd.diseases_name',
     ma_nhom              varchar(50)                              null comment 'Mã nhóm bệnh, cats_diseases_groups.code',
     ten_nhom             varchar(255)                             null comment 'Tên nhóm bệnh, cats_diseases_groups.name',
-    ma_bn                varchar(255)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
     ngay_ghi_nhan        date                                     null comment 'DATE(recording_date). Khóa xóa cùng ma_csyt',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
@@ -51,21 +53,22 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh_nhom
     comment = 'Dashboard CN_308, CN_310, CN_279. Nguồn: medical_records, medical_records_diagnoses_discharge, cats_diseases_groups_details, cats_diseases_groups. Một ICD nhiều nhóm thì tính ở từng nhóm.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh_nhom_stg LIKE emr_db_tong_hop_benh_nhom;
+CREATE OR REPLACE TABLE emr_db_tong_hop_benh_nhom_stg LIKE emr_db_tong_hop_benh_nhom;
 
 -- =============================================================================
 -- 2) Bệnh theo chương — CN_309, CN_312
 -- Mỗi code_vi lấy một chapter_id (MAX) để mã ICD trùng trong cats_icd10 không nhân số.
--- so_ca không lưu: dashboard COUNT(DISTINCT ma_bn).
+-- so_ca không lưu: dashboard COUNT(DISTINCT ma_bn, cccd).
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh_chuong
+CREATE OR REPLACE TABLE emr_db_tong_hop_benh_chuong
 (
     id                   bigint auto_increment primary key,
     ma_benh              varchar(50)                              null comment 'Mã bệnh ICD10, mrd.diseases_code',
     ten_benh             text                                     null comment 'Tên bệnh, mrd.diseases_name',
     ma_chuong            varchar(50)                              null comment 'Mã chương, cats_icd10_chapters.code_vi',
     ten_chuong           varchar(255)                             null comment 'Tên chương, cats_icd10_chapters.name_vi',
-    ma_bn                varchar(255)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
     ngay_ghi_nhan        date                                     null comment 'DATE(recording_date). Khóa xóa cùng ma_csyt',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
@@ -95,20 +98,25 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh_chuong
     comment = 'Dashboard CN_309, CN_312. Nguồn: medical_records, medical_records_diagnoses_discharge, cats_icd10, cats_icd10_chapters.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh_chuong_stg LIKE emr_db_tong_hop_benh_chuong;
+CREATE OR REPLACE TABLE emr_db_tong_hop_benh_chuong_stg LIKE emr_db_tong_hop_benh_chuong;
 
 -- =============================================================================
 -- 3) Bệnh theo mã — CN_311, CN_313
--- so_ngay_dieu_tri là MAX trong grain (số ngày của hồ sơ lặp trên mọi dòng chẩn đoán).
--- Dashboard CN_311 lấy MAX, không SUM. Lọc loai_kham IN (3, 4, 9) lúc đọc.
+-- UPDATE: mỗi dòng chẩn đoán một hồ sơ, so_luot = 1. so_ngay_dieu_tri là số ngày của hồ sơ đó.
+-- Dashboard CN_313 SUM(so_luot). CN_311 lấy MAX(so_ngay_dieu_tri), lọc loai_kham IN (3, 4, 9).
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh
+CREATE OR REPLACE TABLE emr_db_tong_hop_benh
 (
     id                   bigint auto_increment primary key,
     ma_benh              varchar(50)                              null comment 'Mã bệnh ICD10, mrd.diseases_code',
     ten_benh             text                                     null comment 'Tên bệnh, mrd.diseases_name',
     loai_kham            int(1)                                   null comment 'XML1.MA_LOAI_KCB, medical_records.type_of_examination',
     ngay_ghi_nhan        date                                     null comment 'DATE(recording_date). Khóa xóa cùng ma_csyt',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -124,8 +132,8 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    so_luot              bigint                                   null comment 'Số dòng chẩn đoán ra viện trong grain',
-    so_ngay_dieu_tri     decimal(10, 2)                           null comment 'MAX số ngày điều trị nội trú trong grain. Dashboard lấy MAX, không SUM. Nguồn treatment_day_number varchar',
+    so_luot              bigint                                   null comment '1 cho mỗi dòng chẩn đoán. Dashboard SUM',
+    so_ngay_dieu_tri     decimal(10, 2)                           null comment 'Số ngày của hồ sơ, treatment_day_number. Dashboard lấy MAX, không SUM',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -137,26 +145,32 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh
     comment = 'Dashboard CN_311, CN_313. Nguồn: medical_records, medical_records_diagnoses_discharge. so_ngay_dieu_tri lặp theo hồ sơ, đọc bằng MAX.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_benh_stg LIKE emr_db_tong_hop_benh;
+CREATE OR REPLACE TABLE emr_db_tong_hop_benh_stg LIKE emr_db_tong_hop_benh;
 
 -- Key-pair của nhóm này nằm ở pipeline/sql/DDL_cac_bang_key_pair.sql.
 -- Không tạo bảng khóa trong file fact.
 
 -- ADD: fact lượt khám CN_264–CN_286. CN_279 đọc emr_db_tong_hop_benh_nhom, không tạo bảng ở đây.
 -- Chạy trên emr_datawarehouse trước khi bật EMR_DASHBOARD_VISIT_MASTER_DAG.
--- CREATE TABLE IF NOT EXISTS: chạy lại không xóa fact đã có, không đụng bảng thuốc hoặc bệnh.
+-- UPDATE: sáu fact lượt khám có cột chi tiết dùng CREATE OR REPLACE, xóa dữ liệu bảng đó và _stg.
+-- emr_db_tong_hop_luot_ra vẫn CREATE TABLE IF NOT EXISTS. Không đụng bảng thuốc, nhóm bệnh, chương bệnh.
 -- Không UNIQUE. Job xóa theo khóa ngày rồi insert từ _stg.
 -- Chi tiết: z_docs/dashboard/luot_kham.md
 
 -- =============================================================================
 -- 1) Lượt khám theo ngày vào — CN_264, CN_265, CN_267, CN_278, CN_280–CN_283, CN_285, CN_286
--- Grain: cơ sở + DATE(examination_date). Số cộng được theo ngày nên biểu đồ tháng SUM lúc đọc.
--- so_ngay_dieu_tri chỉ cộng hồ sơ loại khám 3, 4, 9. Tỉ lệ tiền CN_286 tính lúc đọc, không lưu.
+-- UPDATE: grain từng hồ sơ + ngày vào để view chi tiết. Dashboard SUM cột 0/1 và tiền, bằng tổng theo ngày cũ.
+-- so_ngay_dieu_tri chỉ của hồ sơ loại khám 3, 4, 9. Tỉ lệ tiền CN_286 tính lúc đọc, không lưu.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_kham
+CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham
 (
     id                   bigint auto_increment primary key,
     ngay_vao             date                                     null comment 'DATE(examination_date). Khóa xóa cùng ma_csyt',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -172,17 +186,17 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_kham
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    so_ho_so             bigint                                   null comment 'Số hồ sơ có examination_date thuộc ngày',
-    so_ho_so_bh          bigint                                   null comment 'Số hồ sơ is_health_insurance = 1',
-    so_ho_so_khong_bh    bigint                                   null comment 'Số hồ sơ IFNULL(is_health_insurance, 0) khác 1',
-    so_cap_cuu           bigint                                   null comment 'Số hồ sơ reason_code = 2',
-    so_tu_vong           bigint                                   null comment 'Số hồ sơ treatment_result_id thuộc 5 hoặc 8',
-    so_noi_tru           bigint                                   null comment 'Số hồ sơ type_of_examination thuộc 3, 4, 9. CN_267 đọc cột này. CN_266 đọc emr_db_tong_hop_luot_vao_ra',
-    so_ngoai_tru         bigint                                   null comment 'Số hồ sơ type_of_examination thuộc 2, 5, 6, 7, 8, 96, 97, 98',
-    so_tai_nan           bigint                                   null comment 'Tổng hồ sơ accident_type = 1, không tách tên. CN_270 đọc emr_db_tong_hop_tai_nan',
-    so_ngay_dieu_tri     decimal(14, 2)                           null comment 'Tổng treatment_day_number của hồ sơ nội trú 3, 4, 9 trong ngày. Đọc bằng SUM',
-    tien_benh_nhan       decimal(20, 3)                           null comment 'Tổng patient_money + patient_pay_together_money',
-    tien_bao_hiem        decimal(20, 3)                           null comment 'Tổng insurance_money',
+    so_ho_so             bigint                                   null comment '1 cho mỗi hồ sơ có examination_date thuộc ngày. Dashboard SUM',
+    so_ho_so_bh          bigint                                   null comment '1 nếu IFNULL(is_health_insurance, 0) = 1. Dashboard SUM',
+    so_ho_so_khong_bh    bigint                                   null comment '1 nếu IFNULL(is_health_insurance, 0) khác 1. Dashboard SUM',
+    so_cap_cuu           bigint                                   null comment '1 nếu reason_code = 2. Dashboard SUM',
+    so_tu_vong           bigint                                   null comment '1 nếu treatment_result_id thuộc 5 hoặc 8. Dashboard SUM',
+    so_noi_tru           bigint                                   null comment '1 nếu type_of_examination thuộc 3, 4, 9. Dashboard SUM. CN_267. CN_266 đọc emr_db_tong_hop_luot_vao_ra',
+    so_ngoai_tru         bigint                                   null comment '1 nếu type_of_examination thuộc 2, 5, 6, 7, 8, 96, 97, 98. Dashboard SUM',
+    so_tai_nan           bigint                                   null comment '1 nếu accident_type = 1. Dashboard SUM. CN_270 đọc emr_db_tong_hop_tai_nan',
+    so_ngay_dieu_tri     decimal(14, 2)                           null comment 'Số ngày của hồ sơ nội trú 3, 4, 9. Dashboard SUM',
+    tien_benh_nhan       decimal(20, 3)                           null comment 'patient_money + patient_pay_together_money của hồ sơ. Dashboard SUM',
+    tien_bao_hiem        decimal(20, 3)                           null comment 'insurance_money của hồ sơ. Dashboard SUM',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -193,23 +207,28 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_kham
     comment = 'Dashboard lượt khám theo ngày vào. Nguồn: medical_records, cats_accidents. Không gồm lượt ra.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_kham_stg LIKE emr_db_tong_hop_luot_kham;
+CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham_stg LIKE emr_db_tong_hop_luot_kham;
 
 -- UPDATE: bảng đã tạo thì CREATE IF NOT EXISTS không sửa comment cột không BHYT
 ALTER TABLE emr_db_tong_hop_luot_kham
-    MODIFY so_ho_so_khong_bh bigint null comment 'Số hồ sơ IFNULL(is_health_insurance, 0) khác 1';
+    MODIFY so_ho_so_khong_bh bigint null comment '1 nếu IFNULL(is_health_insurance, 0) khác 1. Dashboard SUM';
 
 -- =============================================================================
 -- Tai nạn theo tên — CN_270
--- Grain: cơ sở + ngày vào + tên tai nạn. Không gộp vào emr_db_tong_hop_luot_kham
--- vì một ngày nhiều tên sẽ nhân so_ho_so, tiền và số ngày.
+-- UPDATE: grain hồ sơ + ngày vào + tên tai nạn. Không gộp vào emr_db_tong_hop_luot_kham
+-- vì một ngày nhiều tên sẽ nhân so_ho_so, tiền và số ngày. so_luot = 1, dashboard SUM.
 -- Khóa xóa vẫn (ma_csyt, ngay_vao), dùng chung emr_db_changed_record_pair.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tai_nan
+CREATE OR REPLACE TABLE emr_db_tong_hop_tai_nan
 (
     id                   bigint auto_increment primary key,
     ngay_vao             date                                     null comment 'DATE(examination_date). Khóa xóa cùng ma_csyt',
     ten_tai_nan          varchar(255)                             null comment 'Tên nguyên nhân tai nạn, cats_accidents.name_vi, accident_type = 1',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -225,7 +244,7 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tai_nan
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    so_luot              bigint                                   null comment 'Số hồ sơ của tên tai nạn trong ngày',
+    so_luot              bigint                                   null comment '1 cho mỗi hồ sơ của tên tai nạn. Dashboard SUM',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -237,7 +256,7 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tai_nan
     comment = 'Dashboard CN_270. Nguồn: medical_records, cats_accidents. Một ngày nhiều tên tai nạn thì mỗi tên một dòng.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tai_nan_stg LIKE emr_db_tong_hop_tai_nan;
+CREATE OR REPLACE TABLE emr_db_tong_hop_tai_nan_stg LIKE emr_db_tong_hop_tai_nan;
 
 -- =============================================================================
 -- Lượt ra cũ — không còn job. CN_266 đọc emr_db_tong_hop_luot_vao_ra.
@@ -277,14 +296,19 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_ra_stg LIKE emr_db_tong_hop_luot
 
 -- =============================================================================
 -- CN_266 — lượt vào và lượt ra trên cùng một ngày biểu đồ
--- Grain: cơ sở + ngay_theo_doi. Một dòng có cả hai số, dashboard SELECT không UNION.
+-- UPDATE: grain hồ sơ + ngay_theo_doi. Dashboard SUM hai cột theo ngày, không UNION.
 -- Lượt vào: examination_date, loại khám 3, 4, 9. Lượt ra: finish_examination_date, mọi hồ sơ.
 -- Khóa xóa (ma_csyt, ngay_theo_doi) vì cặp đổi đã gồm cả ngày vào và ngày ra.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_vao_ra
+CREATE OR REPLACE TABLE emr_db_tong_hop_luot_vao_ra
 (
     id                   bigint auto_increment primary key,
     ngay_theo_doi        date                                     null comment 'Ngày trên biểu đồ. Lượt vào là DATE(examination_date), lượt ra là DATE(finish_examination_date)',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -300,8 +324,8 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_vao_ra
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    so_luot_vao          bigint                                   null comment 'Số hồ sơ nội trú 3, 4, 9 có examination_date thuộc ngày. 0 nếu ngày chỉ có lượt ra',
-    so_luot_ra           bigint                                   null comment 'Số hồ sơ có finish_examination_date thuộc ngày. Không lọc loại khám. 0 nếu ngày chỉ có lượt vào',
+    so_luot_vao          bigint                                   null comment '1 nếu hồ sơ nội trú vào đúng ngày, ngược lại 0. Dashboard SUM',
+    so_luot_ra           bigint                                   null comment '1 nếu hồ sơ ra đúng ngày, ngược lại 0. Dashboard SUM',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -312,17 +336,23 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_vao_ra
     comment = 'Dashboard CN_266. Một dòng một ngày: so_luot_vao và so_luot_ra. Nguồn: medical_records.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_vao_ra_stg LIKE emr_db_tong_hop_luot_vao_ra;
+CREATE OR REPLACE TABLE emr_db_tong_hop_luot_vao_ra_stg LIKE emr_db_tong_hop_luot_vao_ra;
 
 -- =============================================================================
 -- CN_268 — BHYT / Không BHYT theo ngày vào
--- Grain: cơ sở + ngày vào + loại. Tool dashboard không đọc subquery nên loại nằm sẵn trên dòng.
+-- UPDATE: grain hồ sơ + ngày vào + loại, luot = 1. Ngày thiếu một loại vẫn một dòng luot = 0.
+-- Dashboard SUM(luot). Tool không đọc subquery nên loại nằm sẵn trên dòng.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_bhyt
+CREATE OR REPLACE TABLE emr_db_tong_hop_luot_bhyt
 (
     id                   bigint auto_increment primary key,
     ngay_vao             date                                     null comment 'DATE(examination_date). Khóa xóa cùng ma_csyt',
     loai                 varchar(50)                              null comment 'BHYT khi IFNULL(is_health_insurance, 0) = 1. Không BHYT khi giá trị đó khác 1',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -338,7 +368,7 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_bhyt
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    luot                 bigint                                   null comment 'Số hồ sơ của loại trong ngày. Loại còn lại của ngày vẫn ghi 0',
+    luot                 bigint                                   null comment '1 nếu hồ sơ thuộc loại. Dòng giữ chỗ của loại vắng ghi 0. Dashboard SUM',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -350,17 +380,23 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_bhyt
     comment = 'Dashboard CN_268. Nguồn: medical_records.is_health_insurance. Mỗi loại một dòng.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_luot_bhyt_stg LIKE emr_db_tong_hop_luot_bhyt;
+CREATE OR REPLACE TABLE emr_db_tong_hop_luot_bhyt_stg LIKE emr_db_tong_hop_luot_bhyt;
 
 -- =============================================================================
 -- CN_269 — cấp cứu / tử vong theo ngày vào
--- Grain: cơ sở + ngày vào + loại. Một hồ sơ có thể vừa cấp cứu vừa tử vong.
+-- UPDATE: grain hồ sơ + ngày vào + loại, luot = 1. Một hồ sơ có thể vào cả hai loại.
+-- Ngày thiếu một loại vẫn một dòng luot = 0. Dashboard SUM(luot).
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_cap_cuu_tu_vong
+CREATE OR REPLACE TABLE emr_db_tong_hop_cap_cuu_tu_vong
 (
     id                   bigint auto_increment primary key,
     ngay_vao             date                                     null comment 'DATE(examination_date). Khóa xóa cùng ma_csyt',
     loai                 varchar(50)                              null comment 'Cấp cứu khi reason_code = 2. Tử vong khi treatment_result_id thuộc 5 hoặc 8',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -376,7 +412,7 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_cap_cuu_tu_vong
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    luot                 bigint                                   null comment 'Số hồ sơ của loại trong ngày. Loại còn lại của ngày vẫn ghi 0',
+    luot                 bigint                                   null comment '1 nếu hồ sơ thuộc loại. Dòng giữ chỗ của loại vắng ghi 0. Dashboard SUM',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -388,22 +424,28 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_cap_cuu_tu_vong
     comment = 'Dashboard CN_269. Nguồn: medical_records.reason_code, treatment_result_id. Mỗi loại một dòng.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_cap_cuu_tu_vong_stg LIKE emr_db_tong_hop_cap_cuu_tu_vong;
+CREATE OR REPLACE TABLE emr_db_tong_hop_cap_cuu_tu_vong_stg LIKE emr_db_tong_hop_cap_cuu_tu_vong;
 
 -- =============================================================================
 -- 3) Nhóm chi phí dịch vụ — CN_284
 -- Grain: cơ sở + DATE(decision_date) + nhóm chi phí + mã hồ sơ.
+-- UPDATE: thêm họ tên, CCCD, ngày sinh, giới tính theo ma_hs. COUNT(DISTINCT ma_hs) không đổi.
 -- ma_hs giữ lại vì COUNT(DISTINCT) theo tháng không bằng SUM số hồ sơ từng ngày.
 -- ma_csyt varchar(255) khớp medical_records_services.healthfacilities_id.
 -- examination_date của bảng dịch vụ đang trống trên lake; không dùng cột đó làm ngày.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_nhom_dich_vu
+CREATE OR REPLACE TABLE emr_db_tong_hop_nhom_dich_vu
 (
     id                   bigint auto_increment primary key,
     ngay_y_lenh          date                                     null comment 'DATE(decision_date). Khóa xóa cùng ma_csyt',
     ma_nhom              varchar(50)                              null comment 'Mã nhóm chi phí, cats_cost_groups.code_vi',
     ten_nhom             varchar(255)                             null comment 'Tên nhóm chi phí, cats_cost_groups.name_vi',
     ma_hs                int                                      null comment 'medical_records_services.medical_record_id. Dashboard COUNT(DISTINCT)',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -430,29 +472,35 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_nhom_dich_vu
     comment = 'Dashboard CN_284. Nguồn: medical_records_services, medical_records, cats_cost_groups. Đếm hồ sơ lúc đọc.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_nhom_dich_vu_stg LIKE emr_db_tong_hop_nhom_dich_vu;
+CREATE OR REPLACE TABLE emr_db_tong_hop_nhom_dich_vu_stg LIKE emr_db_tong_hop_nhom_dich_vu;
 
 -- Key-pair của nhóm này nằm ở pipeline/sql/DDL_cac_bang_key_pair.sql.
 -- Không tạo bảng khóa trong file fact.
 
 -- ADD: fact cận lâm sàng và PTTT CN_296–CN_301 và staging.
 -- Chạy trên emr_datawarehouse trước khi bật EMR_DASHBOARD_CLINICAL_MASTER_DAG.
--- CREATE TABLE IF NOT EXISTS: chạy lại không xóa fact đã có, không đụng bảng thuốc, bệnh, lượt khám.
+-- UPDATE: emr_db_tong_hop_cls và emr_db_tong_hop_pttt dùng CREATE OR REPLACE, xóa dữ liệu hai bảng và _stg.
 -- Không UNIQUE. Job xóa theo khóa ngày rồi insert từ _stg.
 -- Chi tiết: z_docs/dashboard/cls_pttt.md
 
 -- =============================================================================
 -- 1) Cận lâm sàng — CN_296 xét nghiệm, CN_297 siêu âm, CN_298 X-quang, CN_299 CT/MRI
--- Grain: cơ sở + ngày (từ thoi_gian yyyyMMdd) + ma_nhom_dich_vu_report.
+-- Grain: cơ sở + ngày (từ thoi_gian yyyyMMdd) + ma_nhom_dich_vu_report. Không hạ xuống hồ sơ.
 -- so_luot là SUM(so_luot) của bảng báo cáo. Đếm dòng sẽ đếm dòng danh mục, không phải lượt.
+-- UPDATE: report_medical_records_service không có khóa hồ sơ nên bốn cột chi tiết để NULL. SUM(so_luot) không đổi.
 -- Nguồn emr_datawarehouse.report_medical_records_service, không nằm trên emr_datalake.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_cls
+CREATE OR REPLACE TABLE emr_db_tong_hop_cls
 (
     id                   bigint auto_increment primary key,
     ngay_thuc_hien       date                                     null comment 'Ngày từ thoi_gian yyyyMMdd. Khóa xóa cùng ma_csyt',
     ma_nhom              varchar(255)                             null comment 'ma_nhom_dich_vu_report. 9 xét nghiệm; 6-8 siêu âm; 1-2 X-quang; 3-5 CT/MRI',
     ten_nhom             varchar(255)                             null comment 'MAX(nhom_dich_vu_report) trong grain',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -480,17 +528,22 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_cls
     comment = 'Dashboard CN_296–CN_299. Nguồn: report_medical_records_service. Lọc ma_nhom lúc đọc.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_cls_stg LIKE emr_db_tong_hop_cls;
+CREATE OR REPLACE TABLE emr_db_tong_hop_cls_stg LIKE emr_db_tong_hop_cls;
 
 -- =============================================================================
 -- 2) Phẫu thuật / thủ thuật — CN_300, CN_301
--- Grain: cơ sở + DATE(decision_date). Hai cột vì hai mã nhóm trên cùng một ngày.
--- so_phau_thuat = COUNT(DISTINCT hồ sơ) cost_group_id 8. so_thu_thuat = nhóm 18.
+-- UPDATE: grain hồ sơ + DATE(decision_date). Cờ 0/1, dashboard SUM bằng COUNT(DISTINCT) cũ.
+-- so_phau_thuat = 1 khi hồ sơ có cost_group_id 8. so_thu_thuat = 1 khi có nhóm 18.
 -- =============================================================================
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_pttt
+CREATE OR REPLACE TABLE emr_db_tong_hop_pttt
 (
     id                   bigint auto_increment primary key,
     ngay_y_lenh          date                                     null comment 'DATE(decision_date). Khóa xóa cùng ma_csyt',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
@@ -506,8 +559,8 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_pttt
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    so_phau_thuat        bigint                                   null comment 'Số hồ sơ có dòng dịch vụ cost_group_id = 8 trong ngày. CN_300',
-    so_thu_thuat         bigint                                   null comment 'Số hồ sơ có dòng dịch vụ cost_group_id = 18 trong ngày. CN_301',
+    so_phau_thuat        bigint                                   null comment '1 nếu hồ sơ có dịch vụ cost_group_id = 8 trong ngày. Dashboard SUM. CN_300',
+    so_thu_thuat         bigint                                   null comment '1 nếu hồ sơ có dịch vụ cost_group_id = 18 trong ngày. Dashboard SUM. CN_301',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -518,7 +571,7 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_pttt
     comment = 'Dashboard CN_300–CN_301. Nguồn: medical_records_services, medical_records, cats_cost_groups.'
 ;
 
-CREATE TABLE IF NOT EXISTS emr_db_tong_hop_pttt_stg LIKE emr_db_tong_hop_pttt;
+CREATE OR REPLACE TABLE emr_db_tong_hop_pttt_stg LIKE emr_db_tong_hop_pttt;
 
 -- Key-pair của nhóm này nằm ở pipeline/sql/DDL_cac_bang_key_pair.sql.
 -- Không tạo bảng khóa trong file fact.

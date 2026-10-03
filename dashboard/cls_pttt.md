@@ -8,8 +8,8 @@ CN_300–CN_301 đọc `emr_datalake.medical_records_services`, `medical_records
 
 | Fact | Màn | Grain |
 |---|---|---|
-| `emr_db_tong_hop_cls` | CN_296–CN_299 | cơ sở + ngày thực hiện + mã nhóm báo cáo |
-| `emr_db_tong_hop_pttt` | CN_300, CN_301 | cơ sở + ngày y lệnh |
+| `emr_db_tong_hop_cls` | CN_296–CN_299 | cơ sở + ngày thực hiện + mã nhóm báo cáo. Bốn cột người bệnh để `NULL` vì bảng báo cáo không có khóa hồ sơ. `SUM(so_luot)` không đổi |
+| `emr_db_tong_hop_pttt` | CN_300, CN_301 | hồ sơ + ngày y lệnh. Cờ 0/1, dashboard `SUM` bằng `COUNT(DISTINCT)` cũ |
 
 Tách hai fact vì khác bảng nguồn, khác cột ngày, khác công thức. Không gộp vào DAG thuốc, bệnh, hoặc lượt khám. Không dùng lại bảng khóa của lượt khám.
 
@@ -19,7 +19,7 @@ Excel viết “đếm số bản ghi” của bảng báo cáo. Bảng đó đ�
 
 Mã nhóm trên nguồn: 9 xét nghiệm, 6–8 siêu âm, 1–2 X-quang, 3–5 CT/MRI. Bốn màn chỉ lọc `ma_nhom` lúc đọc.
 
-CN_300 và CN_301 đếm hồ sơ `medical_record_id`, không đếm dòng dịch vụ. Nhiều dòng cùng hồ sơ trong một ngày vẫn là một ca. `so_phau_thuat` và `so_thu_thuat` là hai cột trên cùng grain.
+CN_300 và CN_301 đếm hồ sơ `medical_record_id`, không đếm dòng dịch vụ. Nhiều dòng cùng hồ sơ trong một ngày vẫn là một ca: cờ `so_phau_thuat` / `so_thu_thuat` bằng 1, dashboard `SUM`.
 
 `ten_csyt`, `tuyen_csyt`, `hang_csyt` của CLS lấy từ bảng báo cáo. PTTT chưa có tên cơ sở trên dòng dịch vụ nên các cột đó để `NULL`. Địa bàn và chỉ tiêu để `NULL` ở cả hai fact.
 
@@ -129,7 +129,7 @@ ORDER BY nam, thang
 
 ## Việc người dùng chạy
 
-1. Trên warehouse: fact `emr_db_tong_hop_cls` và `emr_db_tong_hop_pttt` trong `pipeline/sql/DDL_cac_bang_dich.sql`. Bảng khóa trong `pipeline/sql/DDL_cac_bang_key_pair.sql`.
+1. Trên warehouse: fact `emr_db_tong_hop_cls` và `emr_db_tong_hop_pttt` trong `pipeline/sql/DDL_cac_bang_dich.sql`, cả hai dùng `CREATE OR REPLACE` (xóa dữ liệu hai bảng và `_stg`). Bảng khóa trong `pipeline/sql/DDL_cac_bang_key_pair.sql`. Chạy lại pipeline sau DDL.
 2. Connection Airflow `emr_datalake` phải đọc được `emr_datawarehouse.report_medical_records_service` trên cùng instance. Index `update_date` của `medical_records` và `medical_records_services` đã có.
 3. Airflow variable: `var_emr_db_tong_hop_cls`, `var_emr_db_tong_hop_pttt`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy từ 2000-01-01.
 4. Chạy đủ hai pipeline thì `commit` mới ghi khóa và `last_runtime`. Chạy lẻ thì `from_date` / `to_date` giữ nguyên.
