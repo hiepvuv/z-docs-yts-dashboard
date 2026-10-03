@@ -485,17 +485,16 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_nhom_dich_vu_stg LIKE emr_db_tong_hop_nh
 
 -- =============================================================================
 -- 1) Cận lâm sàng — CN_296 xét nghiệm, CN_297 siêu âm, CN_298 X-quang, CN_299 CT/MRI
--- Grain: cơ sở + ngày (từ thoi_gian yyyyMMdd) + ma_nhom_dich_vu_report. Không hạ xuống hồ sơ.
--- so_luot là SUM(so_luot) của bảng báo cáo. Đếm dòng sẽ đếm dòng danh mục, không phải lượt.
--- UPDATE: report_medical_records_service không có khóa hồ sơ nên bốn cột chi tiết để NULL. SUM(so_luot) không đổi.
--- Nguồn emr_datawarehouse.report_medical_records_service, không nằm trên emr_datalake.
+-- UPDATE: grain cơ sở hồ sơ + DATE(decision_date) + code_vi + record_service_id.
+-- Nguồn emr_datalake: medical_records_services, medical_records, cats_services_groups_reports(_details).
+-- so_luot = 1. Biểu đồ COUNT(DISTINCT id_dich_vu) vì một mã dịch vụ có thể thuộc hai nhóm.
 -- =============================================================================
 CREATE OR REPLACE TABLE emr_db_tong_hop_cls
 (
     id                   bigint auto_increment primary key,
-    ngay_thuc_hien       date                                     null comment 'Ngày từ thoi_gian yyyyMMdd. Khóa xóa cùng ma_csyt',
-    ma_nhom              varchar(255)                             null comment 'ma_nhom_dich_vu_report. 9 xét nghiệm; 6-8 siêu âm; 1-2 X-quang; 3-5 CT/MRI',
-    ten_nhom             varchar(255)                             null comment 'MAX(nhom_dich_vu_report) trong grain',
+    ngay_thuc_hien       date                                     null comment 'DATE(medical_records_services.decision_date). Khóa xóa cùng ma_csyt',
+    ma_nhom              varchar(255)                             null comment 'cats_services_groups_reports.code_vi',
+    ten_nhom             varchar(255)                             null comment 'name_vi của nhóm báo cáo',
     ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
     ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
     cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
@@ -506,17 +505,18 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_cls
     ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
     ma_xa                varchar(50)                              null comment 'Mã xã/phường của cơ sở y tế',
     ten_xa               varchar(255)                             null comment 'Tên xã/phường',
-    ma_csyt              varchar(255)                             null comment 'Mã cơ sở, report_medical_records_service.ma_csyt',
-    ten_csyt             varchar(255)                             null comment 'Tên cơ sở, lấy từ bảng báo cáo',
-    tuyen_csyt           varchar(10)                              null comment 'Tuyến cơ sở, lấy từ bảng báo cáo',
-    hang_csyt            varchar(10)                              null comment 'Hạng cơ sở, lấy từ bảng báo cáo',
+    ma_csyt              varchar(255)                             null comment 'Mã cơ sở, medical_records.healthfacilities_id',
+    ten_csyt             varchar(255)                             null comment 'Tên cơ sở, chưa có trên dòng dịch vụ',
+    tuyen_csyt           varchar(10)                              null comment 'Tuyến cơ sở, chưa có trên dòng dịch vụ',
+    hang_csyt            varchar(10)                              null comment 'Hạng cơ sở, chưa có trên dòng dịch vụ',
     ma_chi_tieu_bieu_do  varchar(50)                              null comment 'Mã chỉ tiêu biểu đồ, dùng để lọc đúng nhóm số liệu',
     ma_chi_tieu_canh_bao varchar(50)                              null comment 'Mã chỉ tiêu cảnh báo, để trống vì màn này không có ngưỡng cảnh báo',
     ten_chi_tieu         varchar(255)                             null comment 'Tên chỉ tiêu bằng tiếng Việt',
     ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
     thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
     nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
-    so_luot              bigint                                   null comment 'SUM(so_luot) của các dòng báo cáo cùng cơ sở, ngày, nhóm',
+    id_dich_vu           int                                      null comment 'medical_records_services.record_service_id. Dashboard COUNT(DISTINCT)',
+    so_luot              bigint                                   null comment '1 cho mỗi cặp dòng dịch vụ và mã nhóm',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -525,7 +525,7 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_cls
     index idx_cls_db (ma_tinh(16), ma_csyt(64), thoi_gian, ma_chi_tieu_bieu_do(24))
 )
     charset = utf8mb3
-    comment = 'Dashboard CN_296–CN_299. Nguồn: report_medical_records_service. Lọc ma_nhom lúc đọc.'
+    comment = 'Dashboard CN_296–CN_299. Nguồn: dòng dịch vụ và nhóm báo cáo. Lọc ma_nhom lúc đọc.'
 ;
 
 CREATE OR REPLACE TABLE emr_db_tong_hop_cls_stg LIKE emr_db_tong_hop_cls;
