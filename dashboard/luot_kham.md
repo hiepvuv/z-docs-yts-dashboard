@@ -19,7 +19,7 @@ Các màn còn lại không dùng fact bệnh: ngày là `examination_date` ho�
 
 `so_ho_so_bh` đếm `IFNULL(is_health_insurance, 0) = 1`. `so_ho_so_khong_bh` đếm giá trị đã coi null là 0 rồi khác 1. CN_264 đọc cùng cột này.
 
-`so_tai_nan` là cờ 0/1 của hồ sơ `accident_type = 1`, CN_280 đọc bằng `SUM`. CN_270 tách `emr_db_tong_hop_tai_nan` vì cần `name_vi`: một ngày nhiều tên nếu nằm trên fact ngày sẽ nhân số hồ sơ, tiền và số ngày.
+`so_tai_nan` là cờ 0/1 của hồ sơ `accident_type = 1`, CN_280 đọc bằng `SUM`. `ten_tai_nan` trên cùng fact là `cats_accidents.name_vi` khi `accident_type = 1`, để view chi tiết. `accident_id` là khóa chính nên LEFT JOIN không nhân dòng, `SUM` các cột số và tiền không đổi. CN_270 vẫn đọc `emr_db_tong_hop_tai_nan`.
 
 `examination_date` trên `medical_records_services` đang không có giá trị (đếm dòng khác NULL = 0). CN_284 lấy ngày y lệnh `decision_date`. Câu “cùng examination_date” trong Excel không áp được trên lake.
 

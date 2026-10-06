@@ -194,6 +194,7 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham
     so_noi_tru           bigint                                   null comment '1 nếu type_of_examination thuộc 3, 4, 9. Dashboard SUM. CN_267. CN_266 đọc emr_db_tong_hop_luot_vao_ra',
     so_ngoai_tru         bigint                                   null comment '1 nếu type_of_examination thuộc 2, 5, 6, 7, 8, 96, 97, 98. Dashboard SUM',
     so_tai_nan           bigint                                   null comment '1 nếu accident_type = 1. Dashboard SUM. CN_270 đọc emr_db_tong_hop_tai_nan',
+    ten_tai_nan          varchar(255)                             null comment 'cats_accidents.name_vi khi accident_type = 1. NULL nếu không phải nguyên nhân tai nạn',
     so_ngay_dieu_tri     decimal(14, 2)                           null comment 'Số ngày của hồ sơ nội trú 3, 4, 9. Dashboard SUM',
     tien_benh_nhan       decimal(20, 3)                           null comment 'patient_money + patient_pay_together_money của hồ sơ. Dashboard SUM',
     tien_bao_hiem        decimal(20, 3)                           null comment 'insurance_money của hồ sơ. Dashboard SUM',
@@ -212,6 +213,12 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham_stg LIKE emr_db_tong_hop_luot_
 -- UPDATE: bảng đã tạo thì CREATE IF NOT EXISTS không sửa comment cột không BHYT
 ALTER TABLE emr_db_tong_hop_luot_kham
     MODIFY so_ho_so_khong_bh bigint null comment '1 nếu IFNULL(is_health_insurance, 0) khác 1. Dashboard SUM';
+
+-- ADD: ten_tai_nan cho bảng đã có. Không CREATE OR REPLACE nên không xóa dữ liệu.
+ALTER TABLE emr_db_tong_hop_luot_kham
+    ADD COLUMN IF NOT EXISTS ten_tai_nan varchar(255) null comment 'cats_accidents.name_vi khi accident_type = 1. NULL nếu không phải nguyên nhân tai nạn' AFTER so_tai_nan;
+ALTER TABLE emr_db_tong_hop_luot_kham_stg
+    ADD COLUMN IF NOT EXISTS ten_tai_nan varchar(255) null comment 'cats_accidents.name_vi khi accident_type = 1. NULL nếu không phải nguyên nhân tai nạn' AFTER so_tai_nan;
 
 -- =============================================================================
 -- Tai nạn theo tên — CN_270
