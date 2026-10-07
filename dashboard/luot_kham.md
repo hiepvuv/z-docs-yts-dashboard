@@ -8,26 +8,32 @@ Các màn còn lại không dùng fact bệnh: ngày là `examination_date` ho�
 
 | Fact | Màn | Grain |
 |---|---|---|
-| `emr_db_tong_hop_luot_kham` | CN_264, CN_265, CN_267, CN_278, CN_280–CN_283, CN_285, CN_286 | hồ sơ + ngày vào. Cột số là 0/1 hoặc tiền của hồ sơ, dashboard `SUM` |
+| `emr_db_tong_hop_luot_kham` | CN_264, CN_265, CN_267, CN_278, CN_280–CN_283 | hồ sơ + ngày vào. Cột số là 0/1 của hồ sơ, dashboard `SUM`. Không còn cột tiền |
 | `emr_db_tong_hop_luot_vao_ra` | CN_266 | hồ sơ + ngày biểu đồ. Dashboard `SUM` hai cột theo ngày |
 | `emr_db_tong_hop_luot_bhyt` | CN_268 | hồ sơ + ngày vào + loại BHYT. `luot = 1`; loại vắng trong ngày có dòng `0` |
 | `emr_db_tong_hop_cap_cuu_tu_vong` | CN_269 | hồ sơ + ngày vào + loại cấp cứu/tử vong. Cùng kiểu dòng `0` |
 | `emr_db_tong_hop_tai_nan` | CN_270 | hồ sơ + ngày vào + tên tai nạn. `so_luot = 1`, dashboard `SUM` |
 | `emr_db_tong_hop_nhom_dich_vu` | CN_284 | cơ sở + ngày y lệnh + nhóm chi phí + mã hồ sơ. Thêm cột người bệnh, không tách dòng |
+| `emr_db_tong_hop_nhom_chi_phi` | CN_285 | hồ sơ + ngày vào + một trong 18 nhóm `code_vi`. `tien_dich_vu` là cột tiền trên hồ sơ, dashboard `SUM` |
+| `emr_db_tong_hop_chi_phi_bh` | CN_286 | hồ sơ + ngày vào. Hai cột tiền, tỉ lệ % tính lúc đọc |
 
 `ngay_vao` = `DATE(examination_date)`. `ngay_ra` = `DATE(finish_examination_date)`. `ngay_y_lenh` = `DATE(decision_date)`. `ma_csyt` hồ sơ lấy `medical_records.healthfacilities_id`. `ma_csyt` dịch vụ lấy `medical_records_services.healthfacilities_id` (varchar 255 trên nguồn).
 
 `so_ho_so_bh` đếm `IFNULL(is_health_insurance, 0) = 1`. `so_ho_so_khong_bh` đếm giá trị đã coi null là 0 rồi khác 1. CN_264 đọc cùng cột này.
 
-`so_tai_nan` là cờ 0/1 của hồ sơ `accident_type = 1`, CN_280 đọc bằng `SUM`. `ten_tai_nan` trên cùng fact là `cats_accidents.name_vi` khi `accident_type = 1`, để view chi tiết. `accident_id` là khóa chính nên LEFT JOIN không nhân dòng, `SUM` các cột số và tiền không đổi. CN_270 vẫn đọc `emr_db_tong_hop_tai_nan`.
+`so_tai_nan` là cờ 0/1 của hồ sơ `accident_type = 1`, CN_280 đọc bằng `SUM`. `ten_tai_nan` trên cùng fact là `cats_accidents.name_vi` khi `accident_type = 1`, để view chi tiết. `accident_id` là khóa chính nên LEFT JOIN không nhân dòng, `SUM` các cột số không đổi. CN_270 vẫn đọc `emr_db_tong_hop_tai_nan`.
 
 `examination_date` trên `medical_records_services` đang không có giá trị (đếm dòng khác NULL = 0). CN_284 lấy ngày y lệnh `decision_date`. Câu “cùng examination_date” trong Excel không áp được trên lake.
 
 CN_284 giữ `ma_hs` vì số hồ sơ trong tháng là `COUNT(DISTINCT ma_hs)`. Cộng số đã tách theo ngày sẽ đếm một hồ sơ nhiều lần.
 
-CN_285 có đích mong muốn trùng CN_283 (tổng số ngày điều trị nội trú). Tên màn nói cơ cấu chi phí nhưng file không nêu cột tiền. SQL làm theo đích đã ghi, không tự thêm cột tiền thành phần.
+CN_285 và CN_286 tách khỏi `emr_db_tong_hop_luot_kham`. Giải pháp cũ gộp CN_285 vào số ngày CN_283 vì file trước không có cột tiền, và CN_286 cộng `patient_pay_together_money` vào tiền bệnh nhân, chỉ lấy `insurance_money`. Excel mới: CN_285 là 18 nhóm trên cột tiền của hồ sơ; CN_286 đổi hai vế tiền. Gộp 18 nhóm vào fact lượt khám sẽ nhân `so_ho_so` và số ngày.
 
-Khóa xóa-ghi hồ sơ: hợp của ngày vào và ngày ra trên `emr_db_changed_record_pair`. Khóa dịch vụ: `emr_db_changed_service_pair`. `prepare` quét `update_date` hồ sơ và dòng dịch vụ. Hồ sơ đổi cũng kéo dòng dịch vụ của hồ sơ đó, vì cờ xóa hồ sơ không sửa `update_date` dòng dịch vụ. `commit` khi cả sáu job thành công. Thứ Hai quét thêm 45 ngày `examination_date` và `decision_date` vì đổi danh mục tai nạn hoặc tên nhóm chi phí không chạm `update_date`.
+CN_285 đọc `medical_records` gắn đủ `cats_cost_groups.code_vi` từ 1 đến 18. Lake có đúng 18 dòng, mã là `'1'`…`'18'`. Tiền map theo mã: 1 `test_money`, 2 `radiology_money`, 3 `func_exploration_money`, 4 `drug_ins_money`, 5 `drug_out_ins_money`, 6 `drug_radio_money`, 7 `blood_money`, 8 `surgery_money`, 9 `service_money`, 10 `material_ins_money`, 11 `material_radio_money`, 12 `transfer_money`, 13 `examinal_money`, 14 `bed_out_money`, 15 `bed_in_money`, 16 `bed_temporary_money`, 17 `blood_product_money`, 18 `tricks_money`. Không lấy tiền từ dòng dịch vụ. Mã 5, 6, 9, 11 đang `is_delete = 1` trên danh mục; vẫn lấy vì Excel map đủ 18 cột. `name_vi` mã 9 có xuống dòng, mã 10 có tab — pipeline cắt trước khi ghi `ten_nhom`. Dòng tiền 0 vẫn lưu để tháng có hồ sơ thì đủ 18 nhóm. Một hồ sơ thành 18 dòng.
+
+CN_286: `tien_khong_bh` = `patient_money` + `external_capacity_money` + `other_souces_money`. `tien_bao_hiem` = `insurance_money` + `patient_pay_together_money`. NULL coi như 0. Tỉ lệ làm tròn 2 chữ số lúc đọc, mẫu số là tổng hai cột.
+
+Khóa xóa-ghi hồ sơ: hợp của ngày vào và ngày ra trên `emr_db_changed_record_pair`. Khóa dịch vụ: `emr_db_changed_service_pair`. `prepare` quét `update_date` hồ sơ và dòng dịch vụ. Hồ sơ đổi cũng kéo dòng dịch vụ của hồ sơ đó, vì cờ xóa hồ sơ không sửa `update_date` dòng dịch vụ. `commit` khi cả tám job thành công. Thứ Hai quét thêm 45 ngày `examination_date` và `decision_date` vì đổi tên tai nạn, tên nhóm dịch vụ hoặc tên 18 nhóm chi phí không chạm `update_date`.
 
 CN_266, CN_268, CN_269 ghi sẵn loại trên dòng vì tool không đọc subquery. Bảng lưu từng hồ sơ để view chi tiết. Ba câu SELECT này `SUM` theo ngày (và theo loại) để số trên biểu đồ bằng lần đọc trước. Dòng `luot = 0` không có họ tên, chỉ giữ điểm 0 của line. `emr_db_tong_hop_luot_ra` không còn job.
 
@@ -210,7 +216,7 @@ GROUP BY nam, thang
 ORDER BY nam, thang
 ```
 
-CN_283 và CN_285 — `emr_db_tong_hop_luot_kham`
+CN_283 — `emr_db_tong_hop_luot_kham`
 
 ```sql
 SELECT nam,
@@ -240,16 +246,37 @@ ORDER BY so_luot DESC
 LIMIT 6
 ```
 
-CN_286 — `emr_db_tong_hop_luot_kham`
+CN_285 — `emr_db_tong_hop_nhom_chi_phi`
+
+`CAST(ma_nhom AS UNSIGNED)` để nhóm 1 đứng trước nhóm 10. `SUM` gồm cả dòng 0.
 
 ```sql
 SELECT nam,
        thang,
-       SUM(tien_benh_nhan) AS tien_benh_nhan,
-       SUM(tien_bao_hiem)  AS tien_bao_hiem,
-       ROUND(SUM(tien_benh_nhan) / NULLIF(SUM(tien_benh_nhan) + SUM(tien_bao_hiem), 0) * 100, 2) AS ty_le_benh_nhan,
-       ROUND(SUM(tien_bao_hiem) / NULLIF(SUM(tien_benh_nhan) + SUM(tien_bao_hiem), 0) * 100, 2) AS ty_le_bao_hiem
-FROM emr_db_tong_hop_luot_kham
+       ma_nhom,
+       ten_nhom,
+       SUM(tien_dich_vu) AS tien_dich_vu
+FROM emr_db_tong_hop_nhom_chi_phi
+WHERE ma_csyt = :ma_csyt
+  AND ngay_vao >= :from_date
+  AND ngay_vao < :to_date
+  AND (:thang IS NULL OR thang = :thang)
+GROUP BY nam, thang, ma_nhom, ten_nhom
+ORDER BY nam, thang, CAST(ma_nhom AS UNSIGNED)
+```
+
+CN_286 — `emr_db_tong_hop_chi_phi_bh`
+
+`ty_le_benh_nhan` là tỉ lệ tiền không bảo hiểm. `ty_le_bao_hiem` là tỉ lệ tiền bảo hiểm. Không lưu hai tỉ lệ.
+
+```sql
+SELECT nam,
+       thang,
+       SUM(tien_khong_bh) AS tien_khong_bh,
+       SUM(tien_bao_hiem) AS tien_bao_hiem,
+       ROUND(SUM(tien_khong_bh) / NULLIF(SUM(tien_khong_bh) + SUM(tien_bao_hiem), 0) * 100, 2) AS ty_le_benh_nhan,
+       ROUND(SUM(tien_bao_hiem) / NULLIF(SUM(tien_khong_bh) + SUM(tien_bao_hiem), 0) * 100, 2) AS ty_le_bao_hiem
+FROM emr_db_tong_hop_chi_phi_bh
 WHERE ma_csyt = :ma_csyt
   AND ngay_vao >= :from_date
   AND ngay_vao < :to_date
@@ -277,7 +304,7 @@ LIMIT 10
 
 ## Việc người dùng chạy
 
-1. Trên warehouse: fact lượt khám trong `pipeline/sql/DDL_cac_bang_dich.sql`. Sáu bảng lượt khám trong danh sách chi tiết dùng `CREATE OR REPLACE` (xóa dữ liệu cũ của đúng các bảng đó và `_stg`). `emr_db_tong_hop_luot_ra` và fact thuốc không bị câu này đụng. Nhóm bệnh và chương bệnh cũng `CREATE OR REPLACE` vì thêm `cccd` cạnh `ma_bn`. Bảng khóa trong `pipeline/sql/DDL_cac_bang_key_pair.sql`. Chạy lại pipeline từ đầu sau khi chạy DDL.
+1. Trên warehouse: fact lượt khám trong `pipeline/sql/DDL_cac_bang_dich.sql`. Tám bảng lượt khám trong danh sách chi tiết dùng `CREATE OR REPLACE` (xóa dữ liệu cũ của đúng các bảng đó và `_stg`), gồm `emr_db_tong_hop_nhom_chi_phi` và `emr_db_tong_hop_chi_phi_bh`. `CREATE OR REPLACE` của `emr_db_tong_hop_luot_kham` bỏ hai cột tiền cũ. `emr_db_tong_hop_luot_ra` và fact thuốc không bị câu này đụng. Nhóm bệnh và chương bệnh cũng `CREATE OR REPLACE` vì thêm `cccd` cạnh `ma_bn`. Bảng khóa trong `pipeline/sql/DDL_cac_bang_key_pair.sql`. Chạy lại pipeline từ đầu sau khi chạy DDL.
 2. Trên nguồn (không sửa dữ liệu), tạo index nếu chưa có. Đã kiểm tra `information_schema`: `medical_records` và `medical_records_services` chưa có index `update_date`.
 
 ```sql
@@ -288,6 +315,6 @@ CREATE INDEX idx_mrs_update_date ON emr_datalake.medical_records_services (updat
 CREATE INDEX idx_mrs_hf_decision ON emr_datalake.medical_records_services (healthfacilities_id, decision_date);
 ```
 
-3. Airflow variable: `var_emr_db_tong_hop_luot_kham`, `var_emr_db_tong_hop_luot_vao_ra`, `var_emr_db_tong_hop_luot_bhyt`, `var_emr_db_tong_hop_cap_cuu_tu_vong`, `var_emr_db_tong_hop_tai_nan`, `var_emr_db_tong_hop_nhom_dich_vu`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy `update_date` từ 2000-01-01. Biến `var_emr_db_tong_hop_luot_ra` không còn job.
-4. Chạy đủ sáu pipeline thì `commit` mới ghi khóa và `last_runtime`. Chạy lẻ thì `from_date` / `to_date` giữ nguyên.
+3. Airflow variable: `var_emr_db_tong_hop_luot_kham`, `var_emr_db_tong_hop_luot_vao_ra`, `var_emr_db_tong_hop_luot_bhyt`, `var_emr_db_tong_hop_cap_cuu_tu_vong`, `var_emr_db_tong_hop_tai_nan`, `var_emr_db_tong_hop_nhom_dich_vu`, `var_emr_db_tong_hop_nhom_chi_phi`, `var_emr_db_tong_hop_chi_phi_bh`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy `update_date` từ 2000-01-01. Biến `var_emr_db_tong_hop_luot_ra` không còn job.
+4. Chạy đủ tám pipeline thì `commit` mới ghi khóa và `last_runtime`. Chạy lẻ thì `from_date` / `to_date` giữ nguyên.
 5. Deploy DAG rồi mới bật. Task không gán pool `mcc_ds_pool`. `py_compile` không thay cho chạy MySQL.

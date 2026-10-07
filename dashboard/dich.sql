@@ -152,15 +152,17 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_benh_stg LIKE emr_db_tong_hop_benh;
 
 -- ADD: fact lượt khám CN_264–CN_286. CN_279 đọc emr_db_tong_hop_benh_nhom, không tạo bảng ở đây.
 -- Chạy trên emr_datawarehouse trước khi bật EMR_DASHBOARD_VISIT_MASTER_DAG.
--- UPDATE: sáu fact lượt khám có cột chi tiết dùng CREATE OR REPLACE, xóa dữ liệu bảng đó và _stg.
+-- UPDATE: tám fact lượt khám có cột chi tiết dùng CREATE OR REPLACE, xóa dữ liệu bảng đó và _stg.
+-- CN_285 và CN_286 tách khỏi emr_db_tong_hop_luot_kham. Bảng lượt khám không còn cột tiền.
 -- emr_db_tong_hop_luot_ra vẫn CREATE TABLE IF NOT EXISTS. Không đụng bảng thuốc, nhóm bệnh, chương bệnh.
 -- Không UNIQUE. Job xóa theo khóa ngày rồi insert từ _stg.
 -- Chi tiết: z_docs/dashboard/luot_kham.md
 
 -- =============================================================================
--- 1) Lượt khám theo ngày vào — CN_264, CN_265, CN_267, CN_278, CN_280–CN_283, CN_285, CN_286
--- UPDATE: grain từng hồ sơ + ngày vào để view chi tiết. Dashboard SUM cột 0/1 và tiền, bằng tổng theo ngày cũ.
--- so_ngay_dieu_tri chỉ của hồ sơ loại khám 3, 4, 9. Tỉ lệ tiền CN_286 tính lúc đọc, không lưu.
+-- 1) Lượt khám theo ngày vào — CN_264, CN_265, CN_267, CN_278, CN_280–CN_283
+-- UPDATE: grain từng hồ sơ + ngày vào để view chi tiết. Dashboard SUM cột 0/1, bằng tổng theo ngày cũ.
+-- so_ngay_dieu_tri chỉ của hồ sơ loại khám 3, 4, 9, chỉ CN_283.
+-- UPDATE: bỏ tien_benh_nhan, tien_bao_hiem. CN_285 và CN_286 đọc fact riêng bên dưới.
 -- =============================================================================
 CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham
 (
@@ -195,9 +197,7 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham
     so_ngoai_tru         bigint                                   null comment '1 nếu type_of_examination thuộc 2, 5, 6, 7, 8, 96, 97, 98. Dashboard SUM',
     so_tai_nan           bigint                                   null comment '1 nếu accident_type = 1. Dashboard SUM. CN_270 đọc emr_db_tong_hop_tai_nan',
     ten_tai_nan          varchar(255)                             null comment 'cats_accidents.name_vi khi accident_type = 1. NULL nếu không phải nguyên nhân tai nạn',
-    so_ngay_dieu_tri     decimal(14, 2)                           null comment 'Số ngày của hồ sơ nội trú 3, 4, 9. Dashboard SUM',
-    tien_benh_nhan       decimal(20, 3)                           null comment 'patient_money + patient_pay_together_money của hồ sơ. Dashboard SUM',
-    tien_bao_hiem        decimal(20, 3)                           null comment 'insurance_money của hồ sơ. Dashboard SUM',
+    so_ngay_dieu_tri     decimal(14, 2)                           null comment 'Số ngày của hồ sơ nội trú 3, 4, 9. Dashboard SUM. CN_283',
     thoi_gian_cap_nhat   date         default current_timestamp() null,
     nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
     nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
@@ -205,7 +205,7 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham
     index idx_luot_db (ma_tinh(16), ma_csyt(32), thoi_gian, ma_chi_tieu_bieu_do(24))
 )
     charset = utf8mb3
-    comment = 'Dashboard lượt khám theo ngày vào. Nguồn: medical_records, cats_accidents. Không gồm lượt ra.'
+    comment = 'Dashboard lượt khám theo ngày vào. Nguồn: medical_records, cats_accidents. Không gồm lượt ra, CN_285, CN_286.'
 ;
 
 CREATE OR REPLACE TABLE emr_db_tong_hop_luot_kham_stg LIKE emr_db_tong_hop_luot_kham;
@@ -480,6 +480,101 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_nhom_dich_vu
 ;
 
 CREATE OR REPLACE TABLE emr_db_tong_hop_nhom_dich_vu_stg LIKE emr_db_tong_hop_nhom_dich_vu;
+
+-- =============================================================================
+-- CN_285 — cơ cấu chi phí theo 18 nhóm
+-- UPDATE: không gộp vào emr_db_tong_hop_luot_kham. Một hồ sơ × 18 nhóm sẽ nhân so_ho_so và số ngày.
+-- Nguồn: medical_records full join cats_cost_groups code_vi 1–18. Tiền là cột trên hồ sơ, không phải dòng dịch vụ.
+-- Mã 5, 6, 9, 11 đang is_delete = 1 trên danh mục; vẫn lấy vì Excel map đủ 18 cột.
+-- Grain: hồ sơ + ngày vào + nhóm. tien_dich_vu = 0 vẫn ghi để tháng nào cũng đủ nhóm.
+-- Khóa xóa (ma_csyt, ngay_vao), dùng chung emr_db_changed_record_pair.
+-- Cột tiền nguồn là decimal(15,2). Fact để decimal(20,3).
+-- =============================================================================
+CREATE OR REPLACE TABLE emr_db_tong_hop_nhom_chi_phi
+(
+    id                   bigint auto_increment primary key,
+    ngay_vao             date                                     null comment 'DATE(examination_date). Khóa xóa cùng ma_csyt',
+    ma_nhom              varchar(50)                              null comment 'Mã nhóm chi phí, cats_cost_groups.code_vi 1–18',
+    ten_nhom             varchar(255)                             null comment 'Tên nhóm, name_vi đã bỏ tab và xuống dòng',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
+    thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
+    ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
+    ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
+    ma_xa                varchar(50)                              null comment 'Mã xã/phường của cơ sở y tế',
+    ten_xa               varchar(255)                             null comment 'Tên xã/phường',
+    ma_csyt              varchar(50)                              null comment 'Mã cơ sở khám chữa bệnh, medical_records.healthfacilities_id',
+    ten_csyt             varchar(255)                             null comment 'Tên cơ sở khám chữa bệnh',
+    tuyen_csyt           varchar(10)                              null comment 'Tuyến của cơ sở khám chữa bệnh',
+    hang_csyt            varchar(10)                              null comment 'Hạng của cơ sở khám chữa bệnh',
+    ma_chi_tieu_bieu_do  varchar(50)                              null comment 'Mã chỉ tiêu biểu đồ, dùng để lọc đúng nhóm số liệu',
+    ma_chi_tieu_canh_bao varchar(50)                              null comment 'Mã chỉ tiêu cảnh báo, để trống vì màn này không có ngưỡng cảnh báo',
+    ten_chi_tieu         varchar(255)                             null comment 'Tên chỉ tiêu bằng tiếng Việt',
+    ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
+    thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
+    nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
+    tien_dich_vu         decimal(20, 3)                           null comment 'Tiền của nhóm trên hồ sơ. Dashboard SUM. 0 vẫn lưu',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    index idx_ncp_csyt_ngay (ma_csyt(32), ngay_vao),
+    index idx_ncp_nhom (ma_csyt(32), ngay_vao, ma_nhom),
+    index idx_ncp_db (ma_tinh(16), ma_csyt(32), thoi_gian, ma_chi_tieu_bieu_do(24))
+)
+    charset = utf8mb3
+    comment = 'Dashboard CN_285. Nguồn: medical_records, cats_cost_groups code_vi 1–18. Một hồ sơ 18 dòng.'
+;
+
+CREATE OR REPLACE TABLE emr_db_tong_hop_nhom_chi_phi_stg LIKE emr_db_tong_hop_nhom_chi_phi;
+
+-- =============================================================================
+-- CN_286 — tiền không bảo hiểm và tiền bảo hiểm
+-- UPDATE: không đọc emr_db_tong_hop_luot_kham. Công thức cũ cộng patient_pay_together_money vào tiền bệnh nhân
+-- và bỏ external_capacity_money, other_souces_money.
+-- tien_khong_bh = patient_money + external_capacity_money + other_souces_money.
+-- tien_bao_hiem = insurance_money + patient_pay_together_money.
+-- Tỉ lệ % tính lúc đọc, không lưu. Grain: hồ sơ + ngày vào.
+-- =============================================================================
+CREATE OR REPLACE TABLE emr_db_tong_hop_chi_phi_bh
+(
+    id                   bigint auto_increment primary key,
+    ngay_vao             date                                     null comment 'DATE(examination_date). Khóa xóa cùng ma_csyt',
+    ma_bn                varchar(150)                             null comment 'Mã người bệnh, medical_records.patient_code. NULL khi trống',
+    ten_bn               text                                     null comment 'Họ tên người bệnh, medical_records.fullname. View chi tiết',
+    cccd                 text                                     null comment 'CCCD, medical_records.citizen_identification',
+    ngay_sinh            datetime                                 null comment 'Ngày sinh, medical_records.birthday',
+    gioi_tinh            varchar(50)                              null comment 'Giới tính, medical_records.gender_id',
+    thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
+    ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế',
+    ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố',
+    ma_xa                varchar(50)                              null comment 'Mã xã/phường của cơ sở y tế',
+    ten_xa               varchar(255)                             null comment 'Tên xã/phường',
+    ma_csyt              varchar(50)                              null comment 'Mã cơ sở khám chữa bệnh, medical_records.healthfacilities_id',
+    ten_csyt             varchar(255)                             null comment 'Tên cơ sở khám chữa bệnh',
+    tuyen_csyt           varchar(10)                              null comment 'Tuyến của cơ sở khám chữa bệnh',
+    hang_csyt            varchar(10)                              null comment 'Hạng của cơ sở khám chữa bệnh',
+    ma_chi_tieu_bieu_do  varchar(50)                              null comment 'Mã chỉ tiêu biểu đồ, dùng để lọc đúng nhóm số liệu',
+    ma_chi_tieu_canh_bao varchar(50)                              null comment 'Mã chỉ tiêu cảnh báo, để trống vì màn này không có ngưỡng cảnh báo',
+    ten_chi_tieu         varchar(255)                             null comment 'Tên chỉ tiêu bằng tiếng Việt',
+    ngay                 varchar(50)                              null comment 'Ngày, tách từ cột thời gian',
+    thang                varchar(10)                              null comment 'Tháng, tách từ cột thời gian, dùng cho bộ lọc Tháng',
+    nam                  varchar(10)                              null comment 'Năm, tách từ cột thời gian, dùng cho bộ lọc Năm',
+    tien_khong_bh        decimal(20, 3)                           null comment 'patient_money + external_capacity_money + other_souces_money. Dashboard SUM',
+    tien_bao_hiem        decimal(20, 3)                           null comment 'insurance_money + patient_pay_together_money. Dashboard SUM',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    index idx_cpbh_csyt_ngay (ma_csyt(32), ngay_vao),
+    index idx_cpbh_db (ma_tinh(16), ma_csyt(32), thoi_gian, ma_chi_tieu_bieu_do(24))
+)
+    charset = utf8mb3
+    comment = 'Dashboard CN_286. Nguồn: medical_records. Tỉ lệ tiền tính lúc đọc.'
+;
+
+CREATE OR REPLACE TABLE emr_db_tong_hop_chi_phi_bh_stg LIKE emr_db_tong_hop_chi_phi_bh;
 
 -- Key-pair của nhóm này nằm ở pipeline/sql/DDL_cac_bang_key_pair.sql.
 -- Không tạo bảng khóa trong file fact.
