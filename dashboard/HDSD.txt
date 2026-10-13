@@ -1,0 +1,127 @@
+Hướng dẫn chạy pipeline dashboard
+================================
+
+from_date và to_date ghi trong Airflow Variable của từng job (tên biến ở cột Variable bên dưới).
+Đúng tên khóa là from_date và to_date. Định dạng nhận: 2026-01-01, 2026/01/01, hoặc 01/01/2026.
+
+
+1. from_date và to_date dùng để làm gì
+--------------------------------------
+
+Hai trường này là cửa sổ quét dòng nguồn đã đổi, không phải khoảng ngày trên biểu đồ.
+
+Pipeline lấy dòng nguồn có update_date >= from_date và update_date < to_date.
+to_date không nằm trong cửa sổ. Không dùng BETWEEN.
+
+Mỗi dòng đổi sinh một cặp (cơ sở, ngày nghiệp vụ). Job xóa số cũ của cặp đó trên bảng đích rồi ghi lại.
+Ngày nghiệp vụ tùy nhóm: ngày y lệnh, ngày ghi nhận, ngày vào, ngày ra. Không lấy update_date làm ngày trên fact.
+
+Cận lâm sàng quét thoi_gian_cap_nhat theo cùng kiểu nửa mở, vì bảng báo cáo không có update_date.
+
+Phải điền cả hai trường. Chỉ điền một trường thì pipeline bỏ qua và chạy theo lịch.
+
+Sau lần chạy thành công, pipeline xóa hai trường và ghi last_runtime = ngày hôm nay.
+Lần lịch sau không bị kẹt trong cửa sổ tay.
+
+
+2. Khi không điền from_date / to_date
+-------------------------------------
+
+Chưa có last_runtime trong Variable (lần đầu):
+- Thuốc: từ 2026-01-01 đến hôm nay.
+- Bệnh, lượt khám, cận lâm sàng: từ 2000-01-01 đến hôm nay.
+
+Đã có last_runtime:
+- from_date = last_runtime lùi 2 ngày (LOOKBACK_DAYS).
+- to_date = hôm nay.
+- Hai ngày chồng lên để job lỗi hoặc dòng lake về muộn vẫn được quét lại.
+- Dòng update_date trong ngày hôm nay chưa vào cửa sổ lần này (to_date là nửa đêm hôm nay). Lần sau, lookback 2 ngày kéo lại.
+
+Thứ Hai, ngoài cửa sổ update_date, pipeline thêm các ngày nghiệp vụ trong 45 ngày gần nhất.
+Mục đích: đổi danh mục (tên nhóm, tên tai nạn, ngày giường) không sửa update_date của dòng fact vẫn được tính lại.
+
+
+3. Cách điền khi cần tính lại một kỳ
+------------------------------------
+
+Ví dụ tính lại dòng nguồn đổi từ 01/01/2026 đến hết 31/03/2026:
+
+  "from_date": "2026-01-01",
+  "to_date": "2026-04-01"
+
+to_date là ngày đầu tiên không lấy. Muốn gồm cả 31/03 thì để 01/04.
+
+Điền cùng một cửa sổ vào mọi Variable của DAG đó, rồi Trigger DAG, không truyền conf pipelines.
+prepare lấy cửa sổ rộng nhất trong các job được chọn: from nhỏ nhất, to lớn nhất.
+
+Chạy lẻ bằng conf thì không ghi khóa và (với bệnh, lượt khám, cận lâm sàng) không xóa from_date/to_date:
+
+  {"pipelines": ["DashboardTongHopCls", "DashboardTongHopPttt"]}
+
+Tên trong conf là PIPELINE_NAME, không phải tên bảng.
+
+Khác nhau giữa các DAG sau khi job thành công:
+- Thuốc: mỗi job tự xóa from_date/to_date và ghi last_runtime của Variable job đó, kể cả khi các job khác chưa xong. Commit khóa thuốc chỉ chạy khi đủ 8 job.
+- Bệnh, lượt khám, cận lâm sàng: chỉ xóa from_date/to_date và ghi last_runtime khi đủ mọi job của DAG và commit khóa thành công. Chạy thiếu job thì giữ cửa sổ tay để lần sau tính lại.
+
+
+4. DAG và bảng đích
+-------------------
+
+Mỗi fact có thêm bảng _stg cùng tên. Dashboard đọc bảng không có hậu tố _stg.
+Mã CN là mã màn hình. Pipeline thuốc không gắn mã CN trong code.
+
+4.1 EMR_DASHBOARD_MEDICAL_MASTER_DAG
+Lịch 01:00 mỗi ngày. Nguồn chính: emr_datalake.medical_records_drugs.
+Ngày trên fact ngày = DATE(decision_date), cột đích vẫn tên ngay_su_dung.
+
+Pipeline                         Variable                              Bảng đích                         Việc đọc
+DashboardTop10ThuocSuDung        var_emr_db_top10_thuoc_sd             emr_db_top10_thuoc_sd             Top 10 thuốc
+DashboardTop10NhomThuocSuDung    var_emr_db_top10_nhom_thuoc_sd        emr_db_top10_nhom_thuoc_sd        Top 10 nhóm thuốc
+DashboardTopHopThuoc             var_emr_db_tong_hop_thuoc             emr_db_tong_hop_thuoc             Hoạt chất, cơ cấu chi phí, khoa, đường dùng
+DashboardTopHopThuocNoiNgoai     var_emr_db_tong_hop_thuoc_noi_ngoai   emr_db_tong_hop_thuoc_noi_ngoai   Nội trú / ngoại trú
+DashboardTopHopThuocPhanNhom     var_emr_db_tong_hop_thuoc_phan_nhom   emr_db_tong_hop_thuoc_phan_nhom   Phân nhóm TDDL
+DashboardTopHopThuocXuatXu       var_emr_db_tong_hop_thuoc_xuat_xu     emr_db_tong_hop_thuoc_xuat_xu     Xuất xứ
+DashboardTopDDDKhoa              var_emr_db_tong_hop_ddd_khoa          emr_db_tong_hop_ddd_khoa          DDD theo năm. Ngày giường: treatment_department_days
+DashboardTopDDDKhoaThang         var_emr_db_tong_hop_ddd_khoa_thang    emr_db_tong_hop_ddd_khoa_thang    DDD theo tháng. Ngày giường: treatment_days
+
+Câu SELECT dashboard: z_docs/dashboard/sql_select/dashboard_drugs_2509.sql
+
+4.2 EMR_DASHBOARD_DISEASE_MASTER_DAG
+Lịch 02:00 mỗi ngày. CN_308–CN_313. Ngày fact = DATE(finish_examination_date) của hồ sơ, cột đích vẫn tên ngay_ghi_nhan.
+
+Pipeline                    Variable                         Bảng đích                      CN
+DashboardTongHopBenhNhom    var_emr_db_tong_hop_benh_nhom    emr_db_tong_hop_benh_nhom      CN_308, CN_310, CN_279
+DashboardTongHopBenhChuong  var_emr_db_tong_hop_benh_chuong  emr_db_tong_hop_benh_chuong    CN_309, CN_312
+DashboardTongHopBenh        var_emr_db_tong_hop_benh         emr_db_tong_hop_benh           CN_311, CN_313
+
+CN_279 không có job trên DAG lượt khám. Màn đó đọc emr_db_tong_hop_benh_nhom do DAG này ghi.
+Chi tiết: z_docs/dashboard/benh_tat.md
+
+4.3 EMR_DASHBOARD_VISIT_MASTER_DAG
+Lịch 03:00 mỗi ngày. CN_264–CN_286, trừ các mã không có job riêng (CN_271–CN_277 không có trong pipeline).
+Ngày vào = DATE(examination_date). Ngày ra = DATE(finish_examination_date). Ngày y lệnh = DATE(decision_date).
+
+Pipeline                      Variable                           Bảng đích                        CN
+DashboardTongHopLuotKham      var_emr_db_tong_hop_luot_kham      emr_db_tong_hop_luot_kham        CN_264, CN_265, CN_267, CN_278, CN_280, CN_281, CN_282, CN_283
+DashboardTongHopLuotVaoRa     var_emr_db_tong_hop_luot_vao_ra    emr_db_tong_hop_luot_vao_ra      CN_266
+DashboardTongHopLuotBhyt      var_emr_db_tong_hop_luot_bhyt      emr_db_tong_hop_luot_bhyt        CN_268
+DashboardTongHopCapCuuTuVong  var_emr_db_tong_hop_cap_cuu_tu_vong emr_db_tong_hop_cap_cuu_tu_vong CN_269
+DashboardTongHopTaiNan        var_emr_db_tong_hop_tai_nan        emr_db_tong_hop_tai_nan          CN_270
+DashboardTongHopNhomDichVu    var_emr_db_tong_hop_nhom_dich_vu   emr_db_tong_hop_nhom_dich_vu     CN_284
+DashboardTongHopNhomChiPhi    var_emr_db_tong_hop_nhom_chi_phi   emr_db_tong_hop_nhom_chi_phi     CN_285
+DashboardTongHopChiPhiBh      var_emr_db_tong_hop_chi_phi_bh     emr_db_tong_hop_chi_phi_bh       CN_286
+
+CN_279 nằm ở DAG bệnh, bảng emr_db_tong_hop_benh_nhom.
+emr_db_tong_hop_luot_ra không còn job. CN_266 đọc emr_db_tong_hop_luot_vao_ra.
+Chi tiết: z_docs/dashboard/luot_kham.md
+
+4.4 EMR_DASHBOARD_CLINICAL_MASTER_DAG
+Lịch 04:00 mỗi ngày. CN_296–CN_301. Ngày fact = DATE(decision_date).
+
+Pipeline               Variable                    Bảng đích               CN
+DashboardTongHopCls    var_emr_db_tong_hop_cls     emr_db_tong_hop_cls     CN_296 xét nghiệm, CN_297 siêu âm, CN_298 X-quang, CN_299 CT/MRI
+DashboardTongHopPttt   var_emr_db_tong_hop_pttt    emr_db_tong_hop_pttt    CN_300 phẫu thuật, CN_301 thủ thuật
+
+Bốn màn CLS lọc ma_nhom lúc đọc, cùng một bảng.
+Chi tiết: z_docs/dashboard/cls_pttt.md

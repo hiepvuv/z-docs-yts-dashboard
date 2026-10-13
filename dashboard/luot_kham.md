@@ -4,7 +4,7 @@
 
 CN_279 đọc `emr_db_tong_hop_benh_nhom` đã có cho CN_308 và CN_310. Không tạo fact mới và không thêm job.
 
-Các màn còn lại không dùng fact bệnh: ngày là `examination_date` hoặc `finish_examination_date` hoặc `decision_date`, không phải `recording_date`. Số là đếm hồ sơ hoặc cộng tiền, không phải dòng chẩn đoán. `emr_db_tong_hop_benh.so_ngay_dieu_tri` là số ngày của hồ sơ, CN_311 đọc bằng `MAX`. CN_283 `SUM` số ngày trên `emr_db_tong_hop_luot_kham`.
+Các màn còn lại không dùng fact bệnh: ngày là `examination_date` hoặc `finish_examination_date` hoặc `decision_date`. Fact bệnh cũng lấy `finish_examination_date`, nhưng số là dòng chẩn đoán, không phải hồ sơ. Số lượt khám là đếm hồ sơ hoặc cộng tiền. `emr_db_tong_hop_benh.so_ngay_dieu_tri` là số ngày của hồ sơ, CN_311 đọc bằng `MAX`. CN_283 `SUM` số ngày trên `emr_db_tong_hop_luot_kham`.
 
 | Fact | Màn | Grain |
 |---|---|---|

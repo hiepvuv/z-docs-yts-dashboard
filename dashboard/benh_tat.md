@@ -10,11 +10,11 @@ Ba fact vì ba kiểu JOIN khác nhau. Một mã ICD thuộc nhiều nhóm thì 
 | `emr_db_tong_hop_benh_chuong` | CN_309, CN_312 | cơ sở + ngày ghi nhận + mã bệnh + tên bệnh + chương + `ma_bn` + `cccd` |
 | `emr_db_tong_hop_benh` | CN_311, CN_313 | từng dòng chẩn đoán + hồ sơ. `so_luot = 1`. CN_313 `SUM`. CN_311 `MAX(so_ngay_dieu_tri)` |
 
-`ngay_ghi_nhan` = `DATE(recording_date)`. `ma_csyt` = `medical_records.healthfacilities_id`. Đếm mọi `diagnoses_type`. Không lọc cờ dashboard của danh mục nhóm.
+`ngay_ghi_nhan` = `DATE(medical_records.finish_examination_date)`. Hồ sơ chưa có ngày ra không vào fact. `ma_csyt` = `medical_records.healthfacilities_id`. Đếm mọi `diagnoses_type`. Không lọc cờ dashboard của danh mục nhóm.
 
 Số ca là `COUNT(DISTINCT ma_bn, cccd)` lúc đọc trên fact nhóm và chương. Mã hoặc CCCD trống không vào số ca. `so_luot` và `so_tu_vong` thì `SUM`. `emr_db_tong_hop_benh.so_ngay_dieu_tri` là số ngày của hồ sơ trên từng dòng chẩn đoán; CN_311 đọc `MAX` và lọc `loai_kham IN (3, 4, 9)`.
 
-Khóa xóa-ghi: `(ma_csyt, ngay_ghi_nhan)` trên `emr_db_changed_diagnoses_pair`. `prepare` quét `update_date` của dòng chẩn đoán và của hồ sơ. `commit` khi cả ba job thành công. Thứ Hai quét thêm 45 ngày `recording_date`.
+Khóa xóa-ghi: `(ma_csyt, ngay_ghi_nhan)` trên `emr_db_changed_diagnoses_pair`. `prepare` quét `update_date` của dòng chẩn đoán và của hồ sơ. `commit` khi cả ba job thành công. Thứ Hai quét thêm 45 ngày `finish_examination_date`.
 
 DAG: `EMR_DASHBOARD_DISEASE_MASTER_DAG`, lịch `0 2 * * *`. Không gắn vào DAG thuốc.
 
