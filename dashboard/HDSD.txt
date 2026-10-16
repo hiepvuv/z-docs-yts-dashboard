@@ -29,7 +29,7 @@ Lần lịch sau không bị kẹt trong cửa sổ tay.
 
 Chưa có last_runtime trong Variable (lần đầu):
 - Thuốc: từ 2026-01-01 đến hôm nay.
-- Bệnh, lượt khám, cận lâm sàng: từ 2000-01-01 đến hôm nay.
+- Bệnh, lượt khám, cận lâm sàng, tử vong: từ 2000-01-01 đến hôm nay.
 
 Đã có last_runtime:
 - from_date = last_runtime lùi 2 ngày (LOOKBACK_DAYS).
@@ -38,7 +38,7 @@ Chưa có last_runtime trong Variable (lần đầu):
 - Dòng update_date trong ngày hôm nay chưa vào cửa sổ lần này (to_date là nửa đêm hôm nay). Lần sau, lookback 2 ngày kéo lại.
 
 Thứ Hai, ngoài cửa sổ update_date, pipeline thêm các ngày nghiệp vụ trong 45 ngày gần nhất.
-Mục đích: đổi danh mục (tên nhóm, tên tai nạn, ngày giường) không sửa update_date của dòng fact vẫn được tính lại.
+Mục đích: đổi danh mục (tên nhóm, tên tai nạn, tên giới tính, hình thức tử vong, nơi tử vong, ngày giường) không sửa update_date của dòng fact vẫn được tính lại.
 
 
 3. Cách điền khi cần tính lại một kỳ
@@ -62,7 +62,7 @@ Tên trong conf là PIPELINE_NAME, không phải tên bảng.
 
 Khác nhau giữa các DAG sau khi job thành công:
 - Thuốc: mỗi job tự xóa from_date/to_date và ghi last_runtime của Variable job đó, kể cả khi các job khác chưa xong. Commit khóa thuốc chỉ chạy khi đủ 8 job.
-- Bệnh, lượt khám, cận lâm sàng: chỉ xóa from_date/to_date và ghi last_runtime khi đủ mọi job của DAG và commit khóa thành công. Chạy thiếu job thì giữ cửa sổ tay để lần sau tính lại.
+- Bệnh, lượt khám, cận lâm sàng, tử vong: chỉ xóa from_date/to_date và ghi last_runtime khi đủ mọi job của DAG và commit khóa thành công. Chạy thiếu job thì giữ cửa sổ tay để lần sau tính lại.
 
 
 4. DAG và bảng đích
@@ -125,3 +125,13 @@ DashboardTongHopPttt   var_emr_db_tong_hop_pttt    emr_db_tong_hop_pttt    CN_30
 
 Bốn màn CLS lọc ma_nhom lúc đọc, cùng một bảng.
 Chi tiết: z_docs/dashboard/cls_pttt.md
+
+4.5 EMR_DASHBOARD_DEATH_MASTER_DAG
+Lịch 05:00 mỗi ngày. CN_399–CN_403. Ngày fact = DATE(dead_date).
+CN_400 cần medical_records.death_place_id trên lake trước khi bật DAG.
+
+Pipeline                 Variable                      Bảng đích                  CN
+DashboardTongHopTuVong   var_emr_db_tong_hop_tu_vong   emr_db_tong_hop_tu_vong    CN_399 giới tính, CN_400 nơi tử vong, CN_401 hình thức, CN_402 theo tháng, CN_403 nhóm tuổi
+
+Cùng một bảng. Dashboard SUM(so_luot) rồi GROUP BY chiều của màn.
+Chi tiết: z_docs/dashboard/tu_vong.md

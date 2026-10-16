@@ -678,3 +678,55 @@ CREATE OR REPLACE TABLE emr_db_tong_hop_pttt_stg LIKE emr_db_tong_hop_pttt;
 -- Key-pair của nhóm này nằm ở pipeline/sql/DDL_cac_bang_key_pair.sql.
 -- Không tạo bảng khóa trong file fact.
 
+-- ADD: fact tử vong CN_399–CN_403. Cùng nội dung pipeline/sql/DDL_cac_bang_dich.sql.
+-- CREATE TABLE IF NOT EXISTS: chạy lại file không xóa số đã nạp.
+-- Chi tiết: z_docs/dashboard/tu_vong.md
+-- UPDATE: chỉ ghi ma_csyt. Địa bàn, tên cơ sở, tuyến, hạng để trống.
+-- UPDATE: CN_400 thêm noi_tu_vong. Bảng đã tạo thì ALTER bên dưới thêm cột.
+
+CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tu_vong
+(
+    id                   bigint auto_increment primary key,
+    ngay_tu_vong         date                                     null comment 'DATE(medical_records.dead_date). Khóa xóa cùng ma_csyt',
+    gioi_tinh            varchar(255)                             null comment 'Tên giới tính, cats_genders.name_vi. Rỗng khi không có danh mục',
+    hinh_thuc_tu_vong    varchar(255)                             null comment 'Tên hình thức, cats_death_forms.name_vi. Rỗng khi không có danh mục',
+    noi_tu_vong          varchar(255)                             null comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_id hoặc không có danh mục',
+    nhom_tuoi            varchar(50)                              null comment 'Số năm tròn birthday đến dead_date: 0-6, 7-12, 13-18, 19-40, 41-60, Trên 60, Không xác định',
+    thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
+    ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế. Pipeline để trống',
+    ten_tinh             varchar(255)                             null comment 'Tên tỉnh/thành phố. Pipeline để trống',
+    ma_xa                varchar(50)                              null comment 'Mã xã/phường của cơ sở y tế. Pipeline để trống',
+    ten_xa               varchar(255)                             null comment 'Tên xã/phường. Pipeline để trống',
+    ma_csyt              varchar(50)                              null comment 'Mã cơ sở, medical_records.healthfacilities_id',
+    ten_csyt             varchar(255)                             null comment 'Tên cơ sở khám chữa bệnh. Pipeline để trống',
+    tuyen_csyt           varchar(10)                              null comment 'Tuyến của cơ sở khám chữa bệnh. Pipeline để trống',
+    hang_csyt            varchar(10)                              null comment 'Hạng của cơ sở khám chữa bệnh. Pipeline để trống',
+    ma_chi_tieu_bieu_do  varchar(50)                              null comment 'Mã chỉ tiêu biểu đồ, để trống vì màn này không gắn mã chỉ tiêu',
+    ma_chi_tieu_canh_bao varchar(50)                              null comment 'Mã chỉ tiêu cảnh báo, để trống vì màn này không có ngưỡng cảnh báo',
+    ten_chi_tieu         varchar(255)                             null comment 'Tên chỉ tiêu bằng tiếng Việt',
+    ngay                 varchar(50)                              null comment 'Ngày, tách từ ngày tử vong',
+    thang                varchar(10)                              null comment 'Tháng, tách từ ngày tử vong, dùng cho bộ lọc Tháng',
+    nam                  varchar(10)                              null comment 'Năm, tách từ ngày tử vong, dùng cho bộ lọc Năm',
+    so_luot              bigint                                   null comment 'Số hồ sơ tử vong (treatment_result_id 5 hoặc 8). Dashboard SUM',
+    thoi_gian_cap_nhat   date         default current_timestamp() null,
+    nguoi_ghi_nhan       varchar(255) default 'admin datalake'    null,
+    nguoi_cap_nhat       varchar(255) default 'admin datalake'    null,
+    index idx_tv_csyt_ngay (ma_csyt, ngay_tu_vong),
+    index idx_tv_db (ma_tinh(16), ma_csyt(32), thoi_gian, ma_chi_tieu_bieu_do(24))
+)
+    charset = utf8mb3
+    comment = 'Dashboard CN_399–CN_403. Nguồn: medical_records.dead_date, treatment_result_id 5 hoặc 8.'
+;
+
+ALTER TABLE emr_db_tong_hop_tu_vong
+    ADD COLUMN IF NOT EXISTS noi_tu_vong varchar(255) null
+        comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_id hoặc không có danh mục'
+        AFTER hinh_thuc_tu_vong;
+
+CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tu_vong_stg LIKE emr_db_tong_hop_tu_vong;
+
+ALTER TABLE emr_db_tong_hop_tu_vong_stg
+    ADD COLUMN IF NOT EXISTS noi_tu_vong varchar(255) null
+        comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_id hoặc không có danh mục'
+        AFTER hinh_thuc_tu_vong;
+
