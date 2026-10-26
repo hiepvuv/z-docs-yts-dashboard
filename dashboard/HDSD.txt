@@ -85,6 +85,7 @@ DashboardTopHopThuocXuatXu       var_emr_db_tong_hop_thuoc_xuat_xu     emr_db_to
 DashboardTopDDDKhoa              var_emr_db_tong_hop_ddd_khoa          emr_db_tong_hop_ddd_khoa          DDD theo năm. Ngày giường: treatment_department_days
 DashboardTopDDDKhoaThang         var_emr_db_tong_hop_ddd_khoa_thang    emr_db_tong_hop_ddd_khoa_thang    DDD theo tháng. Ngày giường: treatment_days
 
+Cột khoa của emr_db_tong_hop_thuoc, emr_db_tong_hop_thuoc_phan_nhom, emr_db_tong_hop_ddd_khoa, emr_db_tong_hop_ddd_khoa_thang lấy cats_faculty.byt_name_vi. Nối vẫn là faculty_treatment_id = cats_faculty.code_vi theo cơ sở.
 Câu SELECT dashboard: z_docs/dashboard/sql_select/dashboard_drugs_2509.sql
 
 4.2 EMR_DASHBOARD_DISEASE_MASTER_DAG
@@ -128,7 +129,7 @@ Chi tiết: z_docs/dashboard/cls_pttt.md
 
 4.5 EMR_DASHBOARD_DEATH_MASTER_DAG
 Lịch 05:00 mỗi ngày. CN_399–CN_403. Ngày fact = DATE(dead_date).
-CN_400 cần medical_records.death_place_id trên lake trước khi bật DAG.
+CN_400: noi_tu_vong lấy cats_death_places.name_vi, nối medical_records.death_place_code = cats_death_places.code_vi.
 
 Pipeline                 Variable                      Bảng đích                  CN
 DashboardTongHopTuVong   var_emr_db_tong_hop_tu_vong   emr_db_tong_hop_tu_vong    CN_399 giới tính, CN_400 nơi tử vong, CN_401 hình thức, CN_402 theo tháng, CN_403 nhóm tuổi

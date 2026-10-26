@@ -929,7 +929,7 @@ CREATE TABLE `cats_cost_groups` (
 
 -- ADD: SHOW CREATE TABLE từ emr_datalake cho nhóm tử vong CN_399–CN_403.
 -- medical_records đã có ở trên, không ghi đè.
--- CN_400 đọc medical_records.death_place_id nối cats_death_places. Cột hồ sơ do người dùng thêm, file này không ghi đè medical_records.
+-- CN_400 nối medical_records.death_place_code = cats_death_places.code_vi. File này không ghi đè medical_records.
 
 CREATE TABLE `cats_genders` (
   `gender_id` varchar(50) NOT NULL DEFAULT '',

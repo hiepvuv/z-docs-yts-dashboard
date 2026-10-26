@@ -690,7 +690,7 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tu_vong
     ngay_tu_vong         date                                     null comment 'DATE(medical_records.dead_date). Khóa xóa cùng ma_csyt',
     gioi_tinh            varchar(255)                             null comment 'Tên giới tính, cats_genders.name_vi. Rỗng khi không có danh mục',
     hinh_thuc_tu_vong    varchar(255)                             null comment 'Tên hình thức, cats_death_forms.name_vi. Rỗng khi không có danh mục',
-    noi_tu_vong          varchar(255)                             null comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_id hoặc không có danh mục',
+    noi_tu_vong          varchar(255)                             null comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_code hoặc mã không có trong danh mục',
     nhom_tuoi            varchar(50)                              null comment 'Số năm tròn birthday đến dead_date: 0-6, 7-12, 13-18, 19-40, 41-60, Trên 60, Không xác định',
     thoi_gian            int                                      null comment 'Thời gian của dòng, định dạng yyyyMMdd',
     ma_tinh              varchar(50)                              null comment 'Mã tỉnh/thành phố của cơ sở y tế. Pipeline để trống',
@@ -720,13 +720,13 @@ CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tu_vong
 
 ALTER TABLE emr_db_tong_hop_tu_vong
     ADD COLUMN IF NOT EXISTS noi_tu_vong varchar(255) null
-        comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_id hoặc không có danh mục'
+        comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_code hoặc mã không có trong danh mục'
         AFTER hinh_thuc_tu_vong;
 
 CREATE TABLE IF NOT EXISTS emr_db_tong_hop_tu_vong_stg LIKE emr_db_tong_hop_tu_vong;
 
 ALTER TABLE emr_db_tong_hop_tu_vong_stg
     ADD COLUMN IF NOT EXISTS noi_tu_vong varchar(255) null
-        comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_id hoặc không có danh mục'
+        comment 'Tên nơi tử vong, cats_death_places.name_vi. Rỗng khi hồ sơ chưa có death_place_code hoặc mã không có trong danh mục'
         AFTER hinh_thuc_tu_vong;
 

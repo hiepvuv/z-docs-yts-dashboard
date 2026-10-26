@@ -8,7 +8,7 @@ Một fact. Các màn cùng nguồn `medical_records`, cùng cửa sổ `DATE(de
 |---|---|---|
 | `emr_db_tong_hop_tu_vong` | CN_399, CN_400, CN_401, CN_402, CN_403 | cơ sở + ngày tử vong + giới tính + hình thức + nơi tử vong + nhóm tuổi |
 
-`noi_tu_vong` = `TRIM(cats_death_places.name_vi)`, nối `cats_death_places.death_place_id = medical_records.death_place_id`. Hồ sơ chưa có mã, hoặc mã không có trong danh mục, thì tên để rỗng. Không lọc `is_delete` của danh mục để giữ tên cũ. Grain nhóm theo `death_place_id`, không theo tên.
+`noi_tu_vong` = `TRIM(cats_death_places.name_vi)`, nối `medical_records.death_place_code = cats_death_places.code_vi`. `death_place_code` trên hồ sơ là `varchar(11)`. Hồ sơ chưa có mã, hoặc mã không có trong danh mục, thì tên để rỗng. Không lọc `is_delete` của danh mục để giữ tên cũ. Grain nhóm theo `death_place_code`, không theo tên. Mã `code_vi` khác NULL không trùng trên danh mục.
 
 `ngay_tu_vong` = `DATE(medical_records.dead_date)`. Hồ sơ không có ngày tử vong không vào fact. `so_luot` là số hồ sơ, dashboard `SUM`.
 
@@ -99,7 +99,7 @@ ORDER BY FIELD(nhom_tuoi, '0-6', '7-12', '13-18', '19-40', '41-60', 'Trên 60', 
 
 ## Việc người dùng chạy
 
-1. Trên lake: thêm `medical_records.death_place_id` kiểu `int`, cùng kiểu khóa `cats_death_places.death_place_id`, trước khi bật DAG. Pipeline không tạo cột này.
+1. Trên lake: job đọc `medical_records.death_place_code` (`varchar(11)`), nối `cats_death_places.code_vi`. Pipeline không tạo cột này.
 2. Trên warehouse: fact trong `pipeline/sql/DDL_cac_bang_dich.sql` (bảng mới dùng `CREATE TABLE IF NOT EXISTS`; bảng đã tạo thì `ALTER ... ADD COLUMN IF NOT EXISTS noi_tu_vong`). Bảng khóa trong `pipeline/sql/DDL_cac_bang_key_pair.sql`.
 3. Trên nguồn (không sửa dữ liệu): `medical_records` đã có `idx_mr_update_date`. Chưa có index `(healthfacilities_id, dead_date)`. Nên tạo index đó trước khi bật DAG, vì job đọc lại theo cặp cơ sở + ngày tử vong và thứ Hai quét `dead_date`.
 4. Airflow variable: `var_emr_db_tong_hop_tu_vong`. Lần đầu đặt `from_date` / `to_date` phủ kỳ cần số. Không đặt hai trường này và chưa có `last_runtime` thì lần quét đầu lấy `update_date` từ 2000-01-01.
